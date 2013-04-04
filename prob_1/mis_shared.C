@@ -22,7 +22,7 @@ int myrandom (int i) { return std::rand()%i;}
 // I: independent set
 // n: number of vertices
 int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
-				const int* V, int* I, const int n)
+				   const int* V, int* I, const int n)
 {
 	int* C = new int[n];
 	int* r = new int[n];
@@ -51,9 +51,8 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 	int n_is=0;
 	
 	while(n_done<n){
-		vector<int> nb;
-		
-#pragma omp parallel for private(nb) shared(I,C,r,n_done,row_ptr,col_ind,n_is) num_threads(1)
+
+#pragma omp parallel for shared(I,C,r,n_done,row_ptr,col_ind,n_is) num_threads(2)
 		for(int i=0; i<n; i++){
 			
 
@@ -64,65 +63,56 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 			
 			// get neibhors
 			int n_nb = row_ptr[i+1]-row_ptr[i];
-			// int* nb = new int[n_nb];
+			int* nb = new int[n_nb];
 			int k=0;
 			for(int j=0; j<n_nb; j++){
 				int i_nb =  col_ind[j+row_ptr[i]];
 				if(C[i_nb]!=-1){
-					nb.push_back(i_nb);
+					nb[k] = i_nb;
 					k++;
 				}
 			}
 			// number of neighbors
 			n_nb=k;
-			int nb_size = nb.size();
 			
 			int fl=1;
 			for(int j=0; j<n_nb; j++){
-				if(r[i] > r[nb[nb_size-k+j+1]]){
+				if(r[i] > r[nb[j]]){
 					fl = 0;
 					break;
 				}
-				else if(r[i] == r[nb[nb_size-k+j+1]] && i>nb[nb_size-k+j+1]){
+				else if(r[i] == r[nb[j]] && i>nb[j]){
 					fl = 0;
 					break;
 				}
 			}
-			
+
 			// if the value is smaller than its neibhors
 			// or the values are the same but node number is smaller, 
 			if(fl){
-				// #pragma omp critical
-				
+#pragma omp critical
+				{
 				I[n_is]=i;
 				n_is++;
-				
-				// add the node number too
-				nb.push_back(i);
-				
+			
+				C[i] = -1;
+				for( int j=0; j<n_nb; j++)
+					C[nb[j]]=-1;
+
 				//	#pragma omp atomic
 				n_done += 1+n_nb;
 			}
-			
-			
+			}
+				
 			for(int j=0; j<n; j++)
 				cout<<C[j]<<" ";
 			cout<<endl;
-			
-		}
 
-		// sweep all the "used" nodes
-		for( int j=0; j<nb.size(); j++){
-			cout<<nb[j]<<endl;
-			C[nb[j]]=-1;
 		}
-		
-		
 	}
+
+	return n_is;
 	
-
-return n_is;
-
 }
 
 
