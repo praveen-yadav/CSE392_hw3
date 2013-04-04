@@ -35,31 +35,32 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 		r[i] = rand()%(2*n);//C[i];
 	}
 	
-	// assign random numbers to vertices
-	// random_shuffle(r,r+n,myrandom);
-
 	for(int i=0; i<n; i++){
 		cout<<r[i]<<endl;
 	}
 
-	// int r[6]={5,1,3,4,2,0};
+	// int r[6]={6,11,9,7,8,8};
 	
 	// number of elements searched
 	int n_done=0;
 
 	// number of independent node
 	int n_is=0;
+
 	
 	while(n_done<n){
 
-#pragma omp parallel for shared(I,C,r,n_done,row_ptr,col_ind,n_is) num_threads(2)
+		// node that are sweeped after each loop
+		vector<int> n_sweep;
+
+#pragma omp parallel for shared(I,C,r,n_done,row_ptr,col_ind,n_is, n_sweep) num_threads(4)
 		for(int i=0; i<n; i++){
 			
-
-			// if( omp_get_thread_num()==0)
-			cout<<"working on node "<<i<<" n_done "<<n_done<<endl;		
 			if(C[i]==-1)
 				continue;
+	
+			// if( omp_get_thread_num()==0)
+			// cout<<"working on node "<<i<<" n_done "<<n_done<<endl;		
 			
 			// get neibhors
 			int n_nb = row_ptr[i+1]-row_ptr[i];
@@ -90,26 +91,31 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 			// if the value is smaller than its neibhors
 			// or the values are the same but node number is smaller, 
 			if(fl){
-#pragma omp critical
-				{
 				I[n_is]=i;
 				n_is++;
 			
-				C[i] = -1;
+				// C[i] = -1;
 				for( int j=0; j<n_nb; j++)
-					C[nb[j]]=-1;
-
+					n_sweep.push_back(nb[j]);
+					// C[nb[j]]=-1;
+				n_sweep.push_back(i);
+				
 				//	#pragma omp atomic
 				n_done += 1+n_nb;
 			}
-			}
-				
-			for(int j=0; j<n; j++)
-				cout<<C[j]<<" ";
-			cout<<endl;
-
+			
+			// if(omp_get_thread_num()==0){
+			// for(int j=0; j<n; j++)
+			// 	cout<<C[j]<<" ";
+			// cout<<endl;
+			// }
 		}
-	}
+
+		// sweep out all the nodes checked
+		for(int i=0; i<n_sweep.size(); i++){
+			C[n_sweep[i]]=-1;
+		}
+	} // while loop
 
 	return n_is;
 	
