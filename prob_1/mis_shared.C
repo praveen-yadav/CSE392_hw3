@@ -14,8 +14,74 @@ using namespace std;
 // lower degree; ties are resolved arbitrary (say by vertex number).
 // The resulting set is I.
 
-// random generator function:
-int myrandom (int i) { return std::rand()%i;}
+// comparison function for sorting pairs
+bool comp_pairs( const pair<int, int>& i, const pair<int, int>& j ) {
+    if( i.first < j.first ) return true;
+	else if( i.first == j.first) return i.second<j.second;
+	else return false;
+}
+
+// create sparse symmetric matrix with 0 diagonal
+int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx)
+{
+	srand(time(0));
+	
+	for(int i=0; i<ne; i++){
+
+		int rn = rand()%n;
+		int cn = rand()%n;
+
+		// no diagonal element
+		while(rn==cn){
+			rn=rand()%n;
+			cn=rand()%n;
+		}
+
+		// no duplications
+		int flag=1;
+		for(int j=0; j<idx.size(); j++){
+			if(idx[j].first==rn && idx[j].second==cn){
+				flag=0;
+				break;
+			}
+		}
+
+		if(flag){
+			pair<int, int> el_1(rn, cn);
+			pair<int, int> el_2(cn, rn);
+			idx.push_back(el_1);
+			idx.push_back(el_2);
+		}
+	}
+
+	sort(idx.begin(), idx.end(), comp_pairs);
+
+
+	for(int i=0; i<idx.size(); i++)
+		cout<<idx[i].first<<" "<<idx[i].second<<endl;
+
+	// vector<int> col_ind(idx.size(), 0);
+	// vector<int> row_ptr(1,0);
+
+	// for(int i=0; i<idx.size()-1; i++){
+	// 	col_ind[i] = idx[i].second;
+	// 	if(idx[i].first<idx[i+1].first)
+	// 		row_ptr.push_back(i+1);
+	// }
+	// row_ptr.push_back(idx.size());
+
+	// cout<<"col_ind"<<endl;
+	// for(int i=0; i<col_ind.size(); i++)
+	// 	cout<<col_ind[i]<<" ";
+	// cout<<endl;
+
+	// cout<<"row_ptr"<<endl;
+	// for(int i=0; i<row_ptr.size(); i++)
+	// 	cout<<row_ptr[i]<<" ";
+	// cout<<endl;
+	
+	return 0;
+}
 
 // E: sparse matrix to describe graph connectivity
 // V: vertices
@@ -109,7 +175,10 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 			// 	cout<<C[j]<<" ";
 			// cout<<endl;
 			// }
-		}
+
+			delete[] nb;
+			
+		} //end for loop
 
 		// sweep out all the nodes checked
 		for(int i=0; i<n_sweep.size(); i++){
@@ -126,19 +195,22 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 int main(int argc, char **argv)
 {
 
-	int val[18] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
-	int col_ind[18] = {1,2,3,0,3,0,3,4,5,0,1,2,5,2,5,2,3,4};
-	int row_ptr[7] = {0,3,5,9,13,15,18};
-	int n=6;
-	int V[6] = {0,1,2,3,4,5};
-	int I[3];
+	vector<pair <int, int> > idx;
+	symm_matrix(100, 10, idx);
 	
-	int n_is = mis_shared( val, col_ind, row_ptr,
-						   V, I, n);
+	// int val[18] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+	// int col_ind[18] = {1,2,3,0,3,0,3,4,5,0,1,2,5,2,5,2,3,4};
+	// int row_ptr[7] = {0,3,5,9,13,15,18};
+	// int n=6;
+	// int V[6] = {0,1,2,3,4,5};
+	// int I[3];
+	
+	// int n_is = mis_shared( val, col_ind, row_ptr,
+	// 					   V, I, n);
 
-	cout<<endl<<"result"<<endl;
-	for(int i=0; i<n_is; i++)
-		cout<<I[i]<<endl;
+	// cout<<endl<<"result"<<endl;
+	// for(int i=0; i<n_is; i++)
+	// 	cout<<I[i]<<endl;
 	
 	return 0;
   
