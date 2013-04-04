@@ -21,21 +21,22 @@ int myrandom (int i) { return std::rand()%i;}
 // V: vertices
 // I: independent set
 // n: number of vertices
-double mis_shared( int* val, int* col_ind, int* row_ptr,
-				   int* V, vector<int>& I, int n)
+int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
+				   const int* V, int* I, const int n)
 {
 	int* C = new int[n];
 	int* r = new int[n];
 
+	srand(time(0));
+
 	// copy vertices
 	for (int i=0;i<n;i++){
 		C[i]=V[i];
-		r[i] = C[i];
+		r[i] = rand()%(2*n);//C[i];
 	}
-	srand(time(0));
 	
 	// assign random numbers to vertices
-	random_shuffle(r,r+n,myrandom);
+	// random_shuffle(r,r+n,myrandom);
 
 	for(int i=0; i<n; i++){
 		cout<<r[i]<<endl;
@@ -46,20 +47,20 @@ double mis_shared( int* val, int* col_ind, int* row_ptr,
 	// number of elements searched
 	int n_done=0;
 
-	while(n_done!=n){
+	// number of independent node
+	int n_is=0;
+	
+	while(n_done<n){
 
-#pragma omp parallel for shared(I) num_threads(1)
+#pragma omp parallel for shared(I,C,r,n_done,row_ptr,col_ind,n_is) num_threads(2)
 		for(int i=0; i<n; i++){
+			
 
+			// if( omp_get_thread_num()==0)
+			cout<<"working on node "<<i<<" n_done "<<n_done<<endl;		
 			if(C[i]==-1)
 				continue;
 			
-			cout<<"working on node "<<i<<endl;
-			for(int j=0; j<n; j++)
-				cout<<C[j]<<" ";
-			cout<<endl;
-		
-
 			// get neibhors
 			int n_nb = row_ptr[i+1]-row_ptr[i];
 			int* nb = new int[n_nb];
@@ -71,6 +72,7 @@ double mis_shared( int* val, int* col_ind, int* row_ptr,
 					k++;
 				}
 			}
+			// number of neighbors
 			n_nb=k;
 			
 			int fl=1;
@@ -79,22 +81,38 @@ double mis_shared( int* val, int* col_ind, int* row_ptr,
 					fl = 0;
 					break;
 				}
+				else if(r[i] == r[nb[j]] && i>nb[j]){
+					fl = 0;
+					break;
+				}
 			}
 
 			// if the value is smaller than its neibhors
+			// or the values are the same but node number is smaller, 
 			if(fl){
 #pragma omp critical
 				{
-					I.push_back(i);
-				}
+				I[n_is]=i;
+				n_is++;
+			
 				C[i] = -1;
 				for( int j=0; j<n_nb; j++)
 					C[nb[j]]=-1;
 
+				//	#pragma omp atomic
 				n_done += 1+n_nb;
 			}
+			}
+				
+			for(int j=0; j<n; j++)
+				cout<<C[j]<<" ";
+			cout<<endl;
+
 		}
 	}
+
+	return n_is;
+	
 }
 
 
@@ -107,13 +125,13 @@ int main(int argc, char **argv)
 	int row_ptr[7] = {0,3,5,9,13,15,18};
 	int n=6;
 	int V[6] = {0,1,2,3,4,5};
-	vector<int> I;
+	int I[3];
 	
-	mis_shared( val, col_ind, row_ptr,
-				V, I, n);
+	int n_is = mis_shared( val, col_ind, row_ptr,
+						   V, I, n);
 
 	cout<<endl<<"result"<<endl;
-	for(int i=0; i<I.size(); i++)
+	for(int i=0; i<n_is; i++)
 		cout<<I[i]<<endl;
 	
 	return 0;
