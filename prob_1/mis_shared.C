@@ -22,7 +22,8 @@ bool comp_pairs( const pair<int, int>& i, const pair<int, int>& j ) {
 }
 
 // create sparse symmetric matrix with 0 diagonal
-int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx)
+int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx,
+				vector<int>& col_ind, vector<int>& row_ptr)
 {
 	srand(time(0));
 	
@@ -56,26 +57,32 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx)
 
 	sort(idx.begin(), idx.end(), comp_pairs);
 
-
 	for(int i=0; i<idx.size(); i++)
 		cout<<idx[i].first<<" "<<idx[i].second<<endl;
 
-	// vector<int> col_ind(idx.size(), 0);
-	// vector<int> row_ptr(1,0);
+	col_ind.resize(idx.size(), 0);
+	row_ptr.resize(idx[0].first+1,0);
 
-	// for(int i=0; i<idx.size()-1; i++){
-	// 	col_ind[i] = idx[i].second;
-	// 	if(idx[i].first<idx[i+1].first)
-	// 		row_ptr.push_back(i+1);
-	// }
-	// row_ptr.push_back(idx.size());
+	for(int i=0; i<idx.size()-1; i++){
+		col_ind[i] = idx[i].second;
+		if(idx[i].first<idx[i+1].first){
+			int n_gap = idx[i+1].first-idx[i].first;
+			for(int j=0; j<n_gap; j++)
+				row_ptr.push_back(i+1);
+		}
+	}
+	col_ind[idx.size()-1] = idx[idx.size()-1].second;
 
+	// for the case that there are empty rows at the end of matrix
+	for(int i=row_ptr.size(); i<n+1; i++)
+		row_ptr.push_back(idx.size());
+	
 	// cout<<"col_ind"<<endl;
 	// for(int i=0; i<col_ind.size(); i++)
 	// 	cout<<col_ind[i]<<" ";
 	// cout<<endl;
 
-	// cout<<"row_ptr"<<endl;
+	// cout<<"row_ptr: "<<row_ptr.size()<<endl;
 	// for(int i=0; i<row_ptr.size(); i++)
 	// 	cout<<row_ptr[i]<<" ";
 	// cout<<endl;
@@ -87,8 +94,10 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx)
 // V: vertices
 // I: independent set
 // n: number of vertices
-int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
-				   const int* V, int* I, const int n)
+int mis_shared( const vector<int>& col_ind,
+				const vector<int>& row_ptr,
+				const int* V, int* I, const int n,
+				const int nt )
 {
 	int* C = new int[n];
 	int* r = new int[n];
@@ -101,9 +110,9 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 		r[i] = rand()%(2*n);//C[i];
 	}
 	
-	for(int i=0; i<n; i++){
-		cout<<r[i]<<endl;
-	}
+	// for(int i=0; i<n; i++){
+	// 	cout<<r[i]<<endl;
+	// }
 
 	// int r[6]={6,11,9,7,8,8};
 	
@@ -114,12 +123,11 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 	int n_is=0;
 
 	
-	while(n_done<n){
-
+	while(n_done<n){		
 		// node that are sweeped after each loop
-		vector<int> n_sweep;
+		vector<int> n_sweep[nt];
 
-#pragma omp parallel for shared(I,C,r,n_done,row_ptr,col_ind,n_is, n_sweep) num_threads(4)
+#pragma omp parallel for shared(I,C,r,n_done,row_ptr,col_ind,n_is, n_sweep) num_threads(nt)
 		for(int i=0; i<n; i++){
 			
 			if(C[i]==-1)
@@ -127,6 +135,8 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 	
 			// if( omp_get_thread_num()==0)
 			// cout<<"working on node "<<i<<" n_done "<<n_done<<endl;		
+
+			const int myrank = omp_get_thread_num();
 			
 			// get neibhors
 			int n_nb = row_ptr[i+1]-row_ptr[i];
@@ -161,11 +171,12 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 				n_is++;
 			
 				// C[i] = -1;
-				for( int j=0; j<n_nb; j++)
-					n_sweep.push_back(nb[j]);
+				for( int j=0; j<n_nb; j++){
+					n_sweep[myrank].push_back(nb[j]);
+				}
 					// C[nb[j]]=-1;
-				n_sweep.push_back(i);
-				
+				n_sweep[myrank].push_back(i);
+
 				//	#pragma omp atomic
 				n_done += 1+n_nb;
 			}
@@ -181,8 +192,10 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 		} //end for loop
 
 		// sweep out all the nodes checked
-		for(int i=0; i<n_sweep.size(); i++){
-			C[n_sweep[i]]=-1;
+		for(int j=0; j<nt; j++){
+			for(int i=0; i<n_sweep[j].size(); i++){
+				C[n_sweep[j][i]]=-1;
+			}
 		}
 	} // while loop
 
@@ -191,26 +204,42 @@ int mis_shared( const int* val, const int* col_ind, const int* row_ptr,
 }
 
 
-
+// main
 int main(int argc, char **argv)
 {
-
+	// number of vertices
+	const int n = 10;
+	// number of edges
+	const int ne = 20;
+	
 	vector<pair <int, int> > idx;
-	symm_matrix(100, 10, idx);
+	vector<int> col_ind;
+	vector<int> row_ptr;
+	symm_matrix(n, ne, idx, col_ind, row_ptr);
 	
-	// int val[18] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
-	// int col_ind[18] = {1,2,3,0,3,0,3,4,5,0,1,2,5,2,5,2,3,4};
-	// int row_ptr[7] = {0,3,5,9,13,15,18};
-	// int n=6;
-	// int V[6] = {0,1,2,3,4,5};
-	// int I[3];
-	
-	// int n_is = mis_shared( val, col_ind, row_ptr,
-	// 					   V, I, n);
+	// int col_ind_[32] = {3, 4, 9, 4, 5, 9, 5, 7, 0, 4, 5, 0, 1, 3, 8, 1, 2, 3, 6, 8, 5, 7, 8, 2, 6, 8, 4, 5, 6, 7, 0, 1};
+	// int row_ptr_[11] = {0, 3, 6, 8, 11, 15, 20, 23, 26, 30, 32};
 
-	// cout<<endl<<"result"<<endl;
-	// for(int i=0; i<n_is; i++)
-	// 	cout<<I[i]<<endl;
+	// col_ind.assign(col_ind_, col_ind_+32);
+	// row_ptr.assign(row_ptr_, row_ptr_+11);
+
+	// initialize vertices
+	int V[n];	
+	for(int i=0; i<n; i++)
+		V[i] = i;
+
+	// initialize independent set 
+	int I[n];
+
+	// number of threads
+	const int nt=4;
+	
+	int n_is = mis_shared( col_ind, row_ptr,
+						   V, I, n, nt);
+
+	cout<<endl<<"result"<<endl;
+	for(int i=0; i<n_is; i++)
+		cout<<I[i]<<endl;
 	
 	return 0;
   
