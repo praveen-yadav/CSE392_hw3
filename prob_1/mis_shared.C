@@ -29,24 +29,28 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx,
 {
 	srand(time(0));
 
-	int inc_rdm=10;//n*n/ne-1;
+	int inc_rdm=n*n/ne-1;
 	int n_curr = 0;
 	int rn=0;
 
+	cout<<"inc_rdm "<<inc_rdm<<endl;
 	
   	while(rn < n){
 
 	  int inc = rand()%inc_rdm+1;
 	  n_curr += inc;
 
-	  if (n_curr%n==0) rn++;
-	  int cn = n_curr%n;
-	  n_curr=cn;
-	  
+	  if (n_curr>=n){
+		rn++;
+		n_curr=n_curr-n;
+	  }
+	  int cn = n_curr;
+	  //  n_curr=cn;
+
 	  if(rn>=n)
 		break;
 
-	  // cout<<rn<<" "<<cn<<" "<<n_curr<<endl;
+	  //	  cout<<rn<<" "<<cn<<" "<<n_curr<<endl;
 	  
 	  // only upper-triangular region
 	  int flag=1;
@@ -215,7 +219,7 @@ int mis_shared_2( const vector<int>& col_ind,
 			int n_nb = row_ptr[u+1]-row_ptr[u];
 			int* nb = new int[n_nb];
 			int k=0;
-// #pragma omp critical(about_C)
+			//#pragma omp critical(about_C)
 			{
 				for(int j=0; j<n_nb; j++){
 					int i_nb =  col_ind[j+row_ptr[u]];
@@ -255,7 +259,7 @@ int mis_shared_2( const vector<int>& col_ind,
 #pragma omp atomic
 				n_done += (1+n_nb);
 									
-// #pragma omp critical(about_C)
+				//#pragma omp critical(about_C)
 				{
 					C[u] = -1;
 					for( int j=0; j<n_nb; j++){
@@ -288,9 +292,9 @@ int mis_shared_2( const vector<int>& col_ind,
 int main(int argc, char **argv)
 {
 	// number of vertices
-	const int n =  10000;
+  const int n =  100000;
 	// number of edges
-	const int ne = 20000;
+	const int ne = 1000000;
 	// number of threads
 	const int nt=4;
 	
@@ -326,12 +330,12 @@ int main(int argc, char **argv)
 
 	cout<<"n_omp=1"<<endl;
 	for(int p=0; p<5; p++){
-	cout<<"generating maximum independent set."<<endl;
+	
 	const double start=omp_get_wtime();
 	int n_is = mis_shared_2( col_ind, row_ptr,
 							V, I, n, 1);
 	const double end=omp_get_wtime();
-	cout<<"done!"<<endl;
+	
 	
 	cout<<"wall clock time = " <<end-start<<endl;
 	}
@@ -339,52 +343,71 @@ int main(int argc, char **argv)
 
 	cout<<"n_omp=2"<<endl;
 	for(int p=0; p<5; p++){
-	cout<<"generating maximum independent set."<<endl;
+	
 	const double start=omp_get_wtime();
 	int n_is = mis_shared_2( col_ind, row_ptr,
 							V, I, n, 2);
 	const double end=omp_get_wtime();
-	cout<<"done!"<<endl;
+	
 	
 	cout<<"wall clock time = " <<end-start<<endl;
 	}
 
 	cout<<"n_omp=4"<<endl;
 	for(int p=0; p<5; p++){
-	cout<<"generating maximum independent set."<<endl;
+	
 	const double start=omp_get_wtime();
 	int n_is = mis_shared_2( col_ind, row_ptr,
 							V, I, n, 4);
 	const double end=omp_get_wtime();
-	cout<<"done!"<<endl;
+	
 	
 	cout<<"wall clock time = " <<end-start<<endl;
 	}
 
 	cout<<"n_omp=8"<<endl;
 	for(int p=0; p<5; p++){
-	cout<<"generating maximum independent set."<<endl;
+	
 	const double start=omp_get_wtime();
 	int n_is = mis_shared_2( col_ind, row_ptr,
 							V, I, n, 8);
 	const double end=omp_get_wtime();
-	cout<<"done!"<<endl;
+	
 	
 	cout<<"wall clock time = " <<end-start<<endl;
 	}
 
 	cout<<"n_omp=16"<<endl;
 	for(int p=0; p<5; p++){
-	cout<<"generating maximum independent set."<<endl;
+	
 	const double start=omp_get_wtime();
 	int n_is = mis_shared_2( col_ind, row_ptr,
 							V, I, n, 16);
 	const double end=omp_get_wtime();
-	cout<<"done!"<<endl;
+	
 	
 	cout<<"wall clock time = " <<end-start<<endl;
 	}
 
+	cout<<"n_omp=32"<<endl;
+	for(int p=0; p<5; p++){
+	  //cout<<"generating maximum independent set."<<endl;
+	const double start=omp_get_wtime();
+	int n_is = mis_shared_2( col_ind, row_ptr,
+							V, I, n, 32);
+	const double end=omp_get_wtime();
+	//	cout<<"done!"<<endl;	   
+	
+	cout<<"wall clock time = " <<end-start<<endl;
+
+	//	cout<<endl<<"result "<<n_is<<endl;
+	// for(int i=0; i<n_is; i++)
+	// 	cout<<I[i]<<endl;
+	
+	
+	}
+
+	
 	// cout<<endl<<"result "<<n_is<<endl;
 	// for(int i=0; i<n_is; i++)
 	// 	cout<<I[i]<<endl;
