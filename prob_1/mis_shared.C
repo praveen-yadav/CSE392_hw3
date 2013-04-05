@@ -1,5 +1,6 @@
 #include <omp.h>
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <vector>
 #include <cstdlib>
@@ -57,8 +58,8 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx,
 
 	sort(idx.begin(), idx.end(), comp_pairs);
 
-	for(int i=0; i<idx.size(); i++)
-		cout<<idx[i].first<<" "<<idx[i].second<<endl;
+	// for(int i=0; i<idx.size(); i++)
+	// 	cout<<idx[i].first<<" "<<idx[i].second<<endl;
 
 	col_ind.resize(idx.size(), 0);
 	row_ptr.resize(idx[0].first+1,0);
@@ -90,6 +91,67 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx,
 	return 0;
 }
 
+// write out the sparse matrix
+int write_matrix(const int n,
+				 const vector<int>& col_ind,
+				 const vector<int>& row_ptr)
+{
+	ofstream file_out;
+	file_out.open ("matrix.dat");
+
+	if(!file_out.is_open()){
+		return 1;
+	}
+
+	// matrix dimension
+	file_out<<row_ptr.size()-1<<endl;
+	// number of non-zero elements
+	file_out<<col_ind.size()<<endl;
+	
+	for(int i=0; i<col_ind.size(); i++)
+		file_out << col_ind[i] <<" ";
+	file_out<<endl;
+	
+	for(int i=0; i<row_ptr.size(); i++)
+		file_out << row_ptr[i] <<" ";
+	file_out<<endl;
+	
+	file_out.close();
+	
+	return 0;
+}
+
+// read from the file
+int read_matrix( vector<int>& col_ind,
+				 vector<int>& row_ptr)
+{
+	string line;
+	ifstream file_in ("matrix.dat");
+	if (!file_in.is_open()) return 1;
+
+	int ne;
+	int n;
+
+	// matrix dimension
+	file_in>>n;
+	// number of non-zero elements
+	file_in>>ne;
+
+	col_ind.resize(ne,0);
+	row_ptr.resize(n+1,0);
+	
+	for(int i=0; i<ne; i++){
+		file_in>>col_ind[i];
+	}
+	for(int i=0; i<n+1; i++){
+		file_in>>row_ptr[i];
+	}
+	
+	file_in.close();
+	
+	return 0;
+}
+
 // E: sparse matrix to describe graph connectivity
 // V: vertices
 // I: independent set
@@ -105,39 +167,35 @@ int mis_shared( const vector<int>& col_ind,
 	srand(time(0));
 
 	// copy vertices
+#pragma omp parallel for shared(C,V,r) num_threads(nt)
 	for (int i=0;i<n;i++){
 		C[i]=V[i];
-		r[i] = rand()%(2*n);//C[i];
+		//r[i] = rand()%(2*n);
+		r[i]=C[i];
 	}
-	
-	// for(int i=0; i<n; i++){
-	// 	cout<<r[i]<<endl;
-	// }
-
-	// int r[6]={6,11,9,7,8,8};
-	
+		
 	// number of elements searched
 	int n_done=0;
 
 	// number of independent node
 	int n_is=0;
-
 	
-	while(n_done<n){		
-		// node that are sweeped after each loop
+	while(n_done<n){
+	  cout<<"n_done "<<n_done<<endl;
+		// nodes that are sweeped after each loop
 		vector<int> n_sweep[nt];
 
-#pragma omp parallel for shared(I,C,r,n_done,row_ptr,col_ind,n_is, n_sweep) num_threads(nt)
+#pragma omp parallel for shared(I,C,r,n_done,n_is) num_threads(nt) 
 		for(int i=0; i<n; i++){
 			
 			if(C[i]==-1)
 				continue;
-	
-			// if( omp_get_thread_num()==0)
-			// cout<<"working on node "<<i<<" n_done "<<n_done<<endl;		
-
-			const int myrank = omp_get_thread_num();
 			
+			const int myrank = omp_get_thread_num();	
+			// if( omp_get_thread_num()==0)
+			// cout<<"rank "<<myrank<<
+			//   " working on node "<<i<<" n_done "<<n_done<<endl;		
+
 			// get neibhors
 			int n_nb = row_ptr[i+1]-row_ptr[i];
 			int* nb = new int[n_nb];
@@ -151,7 +209,8 @@ int mis_shared( const vector<int>& col_ind,
 			}
 			// number of neighbors
 			n_nb=k;
-			
+
+			// checking if the node value is the locally smallest
 			int fl=1;
 			for(int j=0; j<n_nb; j++){
 				if(r[i] > r[nb[j]]){
@@ -165,19 +224,22 @@ int mis_shared( const vector<int>& col_ind,
 			}
 
 			// if the value is smaller than its neibhors
-			// or the values are the same but node number is smaller, 
+			// or the values are the same but node number is smallest, 
 			if(fl){
+#pragma omp critical
+			  {
 				I[n_is]=i;
 				n_is++;
+			  }
 			
-				// C[i] = -1;
+				C[i] = -1;
 				for( int j=0; j<n_nb; j++){
-					n_sweep[myrank].push_back(nb[j]);
+				  // n_sweep[myrank].push_back(nb[j]);
+					C[nb[j]]=-1;
 				}
-					// C[nb[j]]=-1;
-				n_sweep[myrank].push_back(i);
+				// n_sweep[myrank].push_back(i);
 
-				//	#pragma omp atomic
+#pragma omp atomic
 				n_done += 1+n_nb;
 			}
 			
@@ -188,17 +250,27 @@ int mis_shared( const vector<int>& col_ind,
 			// }
 
 			delete[] nb;
+
 			
 		} //end for loop
 
 		// sweep out all the nodes checked
-		for(int j=0; j<nt; j++){
-			for(int i=0; i<n_sweep[j].size(); i++){
-				C[n_sweep[j][i]]=-1;
-			}
-		}
-	} // while loop
+		// #pragma omp parallel for shared(C, n_sweep) num_threads(nt)
+		// for(int j=0; j<nt; j++){
+		// 	for(int i=0; i<n_sweep[j].size(); i++){
+		// 		C[n_sweep[j][i]]=-1;
+		// 	}
+		// }
+		// const double end=omp_get_wtime();
 
+		// cout<<n<<" "<<n_done<<" "<<end-start<<endl;
+
+		
+	} // end while loop
+
+	delete[] C;
+	delete[] r;
+	
 	return n_is;
 	
 }
@@ -208,38 +280,53 @@ int mis_shared( const vector<int>& col_ind,
 int main(int argc, char **argv)
 {
 	// number of vertices
-	const int n = 10;
+	const int n = 100000;
 	// number of edges
-	const int ne = 20;
+	const int ne = 200000;
+	// number of threads
+	const int nt=8;
 	
 	vector<pair <int, int> > idx;
 	vector<int> col_ind;
 	vector<int> row_ptr;
-	symm_matrix(n, ne, idx, col_ind, row_ptr);
 	
-	// int col_ind_[32] = {3, 4, 9, 4, 5, 9, 5, 7, 0, 4, 5, 0, 1, 3, 8, 1, 2, 3, 6, 8, 5, 7, 8, 2, 6, 8, 4, 5, 6, 7, 0, 1};
-	// int row_ptr_[11] = {0, 3, 6, 8, 11, 15, 20, 23, 26, 30, 32};
+	// cout<<"creating symmetric sparse matrix"<<endl;
+	// symm_matrix(n, ne, idx, col_ind, row_ptr);
+	// cout<<"done!"<<endl;
+	
+	// cout<<"writing matrix to file."<<endl;
+	// if(write_matrix(n, col_ind, row_ptr)){
+	// 	cout<<"file output failed."<<endl;
+	// 	return 1;
+	// }
+	// cout<<"done!"<<endl;
 
-	// col_ind.assign(col_ind_, col_ind_+32);
-	// row_ptr.assign(row_ptr_, row_ptr_+11);
-
+	cout<<"reading matrix from file."<<endl;
+	if(read_matrix(col_ind, row_ptr)){
+		cout<<"file input failed."<<endl;
+		return 1;
+	}
+	cout<<"done!"<<endl;	
+	
 	// initialize vertices
-	int V[n];	
+	int V[n]; 
 	for(int i=0; i<n; i++)
 		V[i] = i;
 
 	// initialize independent set 
 	int I[n];
 
-	// number of threads
-	const int nt=4;
-	
+	cout<<"generating maximum independent set."<<endl;
+	const double start=omp_get_wtime();
 	int n_is = mis_shared( col_ind, row_ptr,
 						   V, I, n, nt);
+	const double end=omp_get_wtime();
 
-	cout<<endl<<"result"<<endl;
-	for(int i=0; i<n_is; i++)
-		cout<<I[i]<<endl;
+	cout<<"wall clock time = " <<end-start<<endl;
+	
+	// cout<<endl<<"result"<<endl;
+	// for(int i=0; i<n_is; i++)
+	// 	cout<<I[i]<<endl;
 	
 	return 0;
   
