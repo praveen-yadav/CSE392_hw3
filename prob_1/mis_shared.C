@@ -3,8 +3,9 @@
 #include <fstream>
 #include <algorithm>
 #include <vector>
+#include <stack>
 #include <cstdlib>
-// #include <cmath>
+#include <cmath>
 
 using namespace std;
 
@@ -27,26 +28,31 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx,
 				vector<int>& col_ind, vector<int>& row_ptr)
 {
 	srand(time(0));
+
+	int inc_rdm=10;//n*n/ne-1;
+	int n_curr = 0;
+	int rn=0;
+
 	
-	for(int i=0; i<ne; i++){
+  	while(rn < n){
 
-		int rn = rand()%n;
-		int cn = rand()%n;
+	  int inc = rand()%inc_rdm+1;
+	  n_curr += inc;
 
-		// no diagonal element
-		while(rn==cn){
-			rn=rand()%n;
-			cn=rand()%n;
-		}
+	  if (n_curr%n==0) rn++;
+	  int cn = n_curr%n;
+	  n_curr=cn;
+	  
+	  if(rn>=n)
+		break;
 
-		// no duplications
-		int flag=1;
-		for(int j=0; j<idx.size(); j++){
-			if(idx[j].first==rn && idx[j].second==cn){
-				flag=0;
-				break;
-			}
-		}
+	  // cout<<rn<<" "<<cn<<" "<<n_curr<<endl;
+	  
+	  // only upper-triangular region
+	  int flag=1;
+	  if(rn<=cn){
+		flag=0;
+	  }
 
 		if(flag){
 			pair<int, int> el_1(rn, cn);
@@ -56,7 +62,10 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx,
 		}
 	}
 
+
+	cout<<"sorting..."<<endl;
 	sort(idx.begin(), idx.end(), comp_pairs);
+	cout<<"sorting done"<<endl;
 
 	// for(int i=0; i<idx.size(); i++)
 	// 	cout<<idx[i].first<<" "<<idx[i].second<<endl;
@@ -77,7 +86,7 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx,
 	// for the case that there are empty rows at the end of matrix
 	for(int i=row_ptr.size(); i<n+1; i++)
 		row_ptr.push_back(idx.size());
-	
+
 	// cout<<"col_ind"<<endl;
 	// for(int i=0; i<col_ind.size(); i++)
 	// 	cout<<col_ind[i]<<" ";
@@ -87,9 +96,10 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx,
 	// for(int i=0; i<row_ptr.size(); i++)
 	// 	cout<<row_ptr[i]<<" ";
 	// cout<<endl;
-	
+
 	return 0;
 }
+
 
 // write out the sparse matrix
 int write_matrix(const int n,
@@ -156,68 +166,76 @@ int read_matrix( vector<int>& col_ind,
 // V: vertices
 // I: independent set
 // n: number of vertices
-int mis_shared( const vector<int>& col_ind,
-				const vector<int>& row_ptr,
-				const int* V, int* I, const int n,
-				const int nt )
+int mis_shared_2( const vector<int>& col_ind,
+				  const vector<int>& row_ptr,
+				  const int* V, int* I, const int n,
+				  const int nt )
 {
+  // copy V into C
 	int* C = new int[n];
+	//#pragma omp parallel for shared(C, V) num_threads(nt)
+	for(int i=0; i<n; i++)
+		C[i] = V[i];
+
+	// generate random integers
 	int* r = new int[n];
-
 	srand(time(0));
-
-	// copy vertices
-#pragma omp parallel for shared(C,V,r) num_threads(nt)
+	//#pragma omp parallel for shared(r) num_threads(nt)
 	for (int i=0;i<n;i++){
-		C[i]=V[i];
-		//r[i] = rand()%(2*n);
-		r[i]=C[i];
+		r[i] = rand()%(int(pow(n,4)));
+		// r[i]=C[i];
 	}
-		
-	// number of elements searched
-	int n_done=0;
 
-	// number of independent node
-	int n_is=0;
+
 	
-	while(n_done<n){
-	  cout<<"n_done "<<n_done<<endl;
-		// nodes that are sweeped after each loop
-		vector<int> n_sweep[nt];
+	// number of node removed
+	int n_done = 0;
+	// size of independent set
+	int n_is = 0;
 
-#pragma omp parallel for shared(I,C,r,n_done,n_is) num_threads(nt) 
-		for(int i=0; i<n; i++){
-			
-			if(C[i]==-1)
+
+#pragma omp parallel num_threads(nt) shared(n_done, n_is, C, r, I)
+	{
+
+		int u=n/(nt+1)*omp_get_thread_num();
+		while(n_done<n){
+			// get random vertex
+			// int u = (rand())%n;
+			u = u%n;
+			if (C[u]==-1){
+			  //#pragma omp atomic
+				u++;
 				continue;
-			
-			const int myrank = omp_get_thread_num();	
-			// if( omp_get_thread_num()==0)
-			// cout<<"rank "<<myrank<<
-			//   " working on node "<<i<<" n_done "<<n_done<<endl;		
+			}
 
-			// get neibhors
-			int n_nb = row_ptr[i+1]-row_ptr[i];
+			// if (omp_get_thread_num()==1)
+			// cout<<u<<endl;
+			
+			// get neibhors of u
+			int n_nb = row_ptr[u+1]-row_ptr[u];
 			int* nb = new int[n_nb];
 			int k=0;
-			for(int j=0; j<n_nb; j++){
-				int i_nb =  col_ind[j+row_ptr[i]];
-				if(C[i_nb]!=-1){
-					nb[k] = i_nb;
-					k++;
+// #pragma omp critical(about_C)
+			{
+				for(int j=0; j<n_nb; j++){
+					int i_nb =  col_ind[j+row_ptr[u]];
+					if(C[i_nb]!=-1){
+						nb[k] = i_nb;
+						k++;
+					}
 				}
 			}
 			// number of neighbors
 			n_nb=k;
-
-			// checking if the node value is the locally smallest
+			
+			// check if the node value is the locally smallest
 			int fl=1;
 			for(int j=0; j<n_nb; j++){
-				if(r[i] > r[nb[j]]){
+				if(r[u] > r[nb[j]]){
 					fl = 0;
 					break;
 				}
-				else if(r[i] == r[nb[j]] && i>nb[j]){
+				else if(r[u] == r[nb[j]] && u>nb[j]){
 					fl = 0;
 					break;
 				}
@@ -226,51 +244,41 @@ int mis_shared( const vector<int>& col_ind,
 			// if the value is smaller than its neibhors
 			// or the values are the same but node number is smallest, 
 			if(fl){
-#pragma omp critical
-			  {
-				I[n_is]=i;
-				n_is++;
-			  }
-			
-				C[i] = -1;
-				for( int j=0; j<n_nb; j++){
-				  // n_sweep[myrank].push_back(nb[j]);
-					C[nb[j]]=-1;
+#pragma omp critical(add_data)
+				{
+					// cout<<"u "<<u<<endl;
+					I[n_is]=u;
 				}
-				// n_sweep[myrank].push_back(i);
 
 #pragma omp atomic
-				n_done += 1+n_nb;
+				n_is++;
+#pragma omp atomic
+				n_done += (1+n_nb);
+									
+// #pragma omp critical(about_C)
+				{
+					C[u] = -1;
+					for( int j=0; j<n_nb; j++){
+						C[nb[j]]=-1;
+					}
+				}
+
 			}
-			
-			// if(omp_get_thread_num()==0){
-			// for(int j=0; j<n; j++)
-			// 	cout<<C[j]<<" ";
-			// cout<<endl;
-			// }
 
+			
 			delete[] nb;
-
 			
-		} //end for loop
-
-		// sweep out all the nodes checked
-		// #pragma omp parallel for shared(C, n_sweep) num_threads(nt)
-		// for(int j=0; j<nt; j++){
-		// 	for(int i=0; i<n_sweep[j].size(); i++){
-		// 		C[n_sweep[j][i]]=-1;
-		// 	}
-		// }
-		// const double end=omp_get_wtime();
-
-		// cout<<n<<" "<<n_done<<" "<<end-start<<endl;
+			//#pragma omp atomic
+			u++;
+		} // end while
+		
 
 		
-	} // end while loop
+	} // end parallel region
 
-	delete[] C;
-	delete[] r;
 	
+	delete[] C, r;
+
 	return n_is;
 	
 }
@@ -280,11 +288,11 @@ int mis_shared( const vector<int>& col_ind,
 int main(int argc, char **argv)
 {
 	// number of vertices
-	const int n = 100000;
+	const int n =  10000;
 	// number of edges
-	const int ne = 200000;
+	const int ne = 20000;
 	// number of threads
-	const int nt=8;
+	const int nt=4;
 	
 	vector<pair <int, int> > idx;
 	vector<int> col_ind;
@@ -316,15 +324,68 @@ int main(int argc, char **argv)
 	// initialize independent set 
 	int I[n];
 
+	cout<<"n_omp=1"<<endl;
+	for(int p=0; p<5; p++){
 	cout<<"generating maximum independent set."<<endl;
 	const double start=omp_get_wtime();
-	int n_is = mis_shared( col_ind, row_ptr,
-						   V, I, n, nt);
+	int n_is = mis_shared_2( col_ind, row_ptr,
+							V, I, n, 1);
 	const double end=omp_get_wtime();
-
-	cout<<"wall clock time = " <<end-start<<endl;
+	cout<<"done!"<<endl;
 	
-	// cout<<endl<<"result"<<endl;
+	cout<<"wall clock time = " <<end-start<<endl;
+	}
+
+
+	cout<<"n_omp=2"<<endl;
+	for(int p=0; p<5; p++){
+	cout<<"generating maximum independent set."<<endl;
+	const double start=omp_get_wtime();
+	int n_is = mis_shared_2( col_ind, row_ptr,
+							V, I, n, 2);
+	const double end=omp_get_wtime();
+	cout<<"done!"<<endl;
+	
+	cout<<"wall clock time = " <<end-start<<endl;
+	}
+
+	cout<<"n_omp=4"<<endl;
+	for(int p=0; p<5; p++){
+	cout<<"generating maximum independent set."<<endl;
+	const double start=omp_get_wtime();
+	int n_is = mis_shared_2( col_ind, row_ptr,
+							V, I, n, 4);
+	const double end=omp_get_wtime();
+	cout<<"done!"<<endl;
+	
+	cout<<"wall clock time = " <<end-start<<endl;
+	}
+
+	cout<<"n_omp=8"<<endl;
+	for(int p=0; p<5; p++){
+	cout<<"generating maximum independent set."<<endl;
+	const double start=omp_get_wtime();
+	int n_is = mis_shared_2( col_ind, row_ptr,
+							V, I, n, 8);
+	const double end=omp_get_wtime();
+	cout<<"done!"<<endl;
+	
+	cout<<"wall clock time = " <<end-start<<endl;
+	}
+
+	cout<<"n_omp=16"<<endl;
+	for(int p=0; p<5; p++){
+	cout<<"generating maximum independent set."<<endl;
+	const double start=omp_get_wtime();
+	int n_is = mis_shared_2( col_ind, row_ptr,
+							V, I, n, 8);
+	const double end=omp_get_wtime();
+	cout<<"done!"<<endl;
+	
+	cout<<"wall clock time = " <<end-start<<endl;
+	}
+
+	// cout<<endl<<"result "<<n_is<<endl;
 	// for(int i=0; i<n_is; i++)
 	// 	cout<<I[i]<<endl;
 	
