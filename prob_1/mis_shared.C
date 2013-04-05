@@ -298,16 +298,16 @@ int main(int argc, char **argv)
 	vector<int> col_ind;
 	vector<int> row_ptr;
 	
-	// cout<<"creating symmetric sparse matrix"<<endl;
-	// symm_matrix(n, ne, idx, col_ind, row_ptr);
-	// cout<<"done!"<<endl;
+	cout<<"creating symmetric sparse matrix"<<endl;
+	symm_matrix(n, ne, idx, col_ind, row_ptr);
+	cout<<"done!"<<endl;
 	
-	// cout<<"writing matrix to file."<<endl;
-	// if(write_matrix(n, col_ind, row_ptr)){
-	// 	cout<<"file output failed."<<endl;
-	// 	return 1;
-	// }
-	// cout<<"done!"<<endl;
+	cout<<"writing matrix to file."<<endl;
+	if(write_matrix(n, col_ind, row_ptr)){
+		cout<<"file output failed."<<endl;
+		return 1;
+	}
+	cout<<"done!"<<endl;
 
 	cout<<"reading matrix from file."<<endl;
 	if(read_matrix(col_ind, row_ptr)){
@@ -378,7 +378,7 @@ int main(int argc, char **argv)
 	cout<<"generating maximum independent set."<<endl;
 	const double start=omp_get_wtime();
 	int n_is = mis_shared_2( col_ind, row_ptr,
-							V, I, n, 8);
+							V, I, n, 16);
 	const double end=omp_get_wtime();
 	cout<<"done!"<<endl;
 	
