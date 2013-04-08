@@ -37,26 +37,26 @@ int symm_matrix(const int n, const int ne, 	vector<pair <int, int> >& idx,
 	
   	while(rn < n){
 
-	  int inc = rand()%inc_rdm+1;
-	  n_curr += inc;
+		int inc = rand()%inc_rdm+1;
+		n_curr += inc;
+ 
+		if (n_curr>=n){
+			rn++;
+			n_curr=n_curr-n;
+		}
+		int cn = n_curr;
+		//  n_curr=cn;
 
-	  if (n_curr>=n){
-		rn++;
-		n_curr=n_curr-n;
-	  }
-	  int cn = n_curr;
-	  //  n_curr=cn;
+		if(rn>=n)
+			break;
 
-	  if(rn>=n)
-		break;
-
-	  //	  cout<<rn<<" "<<cn<<" "<<n_curr<<endl;
+		//	  cout<<rn<<" "<<cn<<" "<<n_curr<<endl;
 	  
-	  // only upper-triangular region
-	  int flag=1;
-	  if(rn<=cn){
-		flag=0;
-	  }
+		// only upper-triangular region
+		int flag=1;
+		if(rn<=cn){
+			flag=0;
+		}
 
 		if(flag){
 			pair<int, int> el_1(rn, cn);
@@ -175,7 +175,7 @@ int mis_shared_2( const vector<int>& col_ind,
 				  const int* V, int* I, const int n,
 				  const int nt )
 {
-  // copy V into C
+	// copy V into C
 	int* C = new int[n];
 	//#pragma omp parallel for shared(C, V) num_threads(nt)
 	for(int i=0; i<n; i++)
@@ -197,17 +197,50 @@ int mis_shared_2( const vector<int>& col_ind,
 	// size of independent set
 	int n_is = 0;
 
-
+	int flag=0;
 #pragma omp parallel num_threads(nt) shared(n_done, n_is, C, r, I)
 	{
-
-		int u=n/(nt+1)*omp_get_thread_num();
+		int u=n/(nt)*omp_get_thread_num();
+				
 		while(n_done<n){
+
+			
+		// #pragma omp barrier
+			if(omp_get_thread_num()==0){
+			n_done = 0;
+			// #pragma omp parallel for reduction(+:n_done)
+			// flag=1;
+			for(int j=0; j<n; j++){
+				if(C[j]!=-1)
+					flag=0;
+				else
+					n_done++;
+			}
+				// cout<<C[j]<<" ";
+				// cout<<endl;
+				// n_done += C[j];
+
+			// cout<<n<<" "<<n_done<<endl;
+
+			if(flag==0)
+				cout<<n_done<<endl;
+			
+			if(n_done==n)
+			flag=1;
+		}
+
+			if(flag==1){
+				cout<<"break "<<omp_get_thread_num()<<endl;
+				
+				break;
+			}
+
+			
 			// get random vertex
 			// int u = (rand())%n;
 			u = u%n;
 			if (C[u]==-1){
-			  //#pragma omp atomic
+				//#pragma omp atomic
 				u++;
 				continue;
 			}
@@ -256,8 +289,8 @@ int mis_shared_2( const vector<int>& col_ind,
 
 #pragma omp atomic
 				n_is++;
-#pragma omp atomic
-				n_done += (1+n_nb);
+// #pragma omp atomic
+				// n_done += (1+n_nb);
 									
 				//#pragma omp critical(about_C)
 				{
@@ -274,29 +307,32 @@ int mis_shared_2( const vector<int>& col_ind,
 			
 			//#pragma omp atomic
 			u++;
+
+// #pragma omp barrier
+
+			
 		} // end while
 		
 
-		
+			
 	} // end parallel region
 
-	
+			
 	delete[] C, r;
-
+			
 	return n_is;
 	
 }
-
 
 // main
 int main(int argc, char **argv)
 {
 	// number of vertices
-  const int n =  100000;
+	const int n =  1000;
 	// number of edges
-	const int ne = 1000000;
+	const int ne = 4000;
 	// number of threads
-	const int nt=4;
+	// const int nt=4;
 	
 	vector<pair <int, int> > idx;
 	vector<int> col_ind;
@@ -328,90 +364,85 @@ int main(int argc, char **argv)
 	// initialize independent set 
 	int I[n];
 
+	// number of indepdnent nodes
+	int n_is;
+	
 	cout<<"n_omp=1"<<endl;
-	for(int p=0; p<5; p++){
+	for(int p=0; p<1; p++){
 	
-	const double start=omp_get_wtime();
-	int n_is = mis_shared_2( col_ind, row_ptr,
-							V, I, n, 1);
-	const double end=omp_get_wtime();
+		const double start=omp_get_wtime();
+		n_is = mis_shared_2( col_ind, row_ptr,
+								 V, I, n, 4);
+		const double end=omp_get_wtime();
 	
-	
-	cout<<"wall clock time = " <<end-start<<endl;
+		cout<<"wall clock time = " <<end-start<<endl;
 	}
-
-
+	
 	cout<<"n_omp=2"<<endl;
 	for(int p=0; p<5; p++){
 	
-	const double start=omp_get_wtime();
-	int n_is = mis_shared_2( col_ind, row_ptr,
-							V, I, n, 2);
-	const double end=omp_get_wtime();
+		const double start=omp_get_wtime();
+		n_is = mis_shared_2( col_ind, row_ptr,
+								 V, I, n, 2);
+		const double end=omp_get_wtime();
 	
-	
-	cout<<"wall clock time = " <<end-start<<endl;
+		cout<<"wall clock time = " <<end-start<<endl;
 	}
 
 	cout<<"n_omp=4"<<endl;
 	for(int p=0; p<5; p++){
 	
-	const double start=omp_get_wtime();
-	int n_is = mis_shared_2( col_ind, row_ptr,
-							V, I, n, 4);
-	const double end=omp_get_wtime();
+		const double start=omp_get_wtime();
+		n_is = mis_shared_2( col_ind, row_ptr,
+								 V, I, n, 4);
+		const double end=omp_get_wtime();
 	
-	
-	cout<<"wall clock time = " <<end-start<<endl;
+		cout<<"wall clock time = " <<end-start<<endl;
 	}
 
 	cout<<"n_omp=8"<<endl;
 	for(int p=0; p<5; p++){
 	
-	const double start=omp_get_wtime();
-	int n_is = mis_shared_2( col_ind, row_ptr,
-							V, I, n, 8);
-	const double end=omp_get_wtime();
+		const double start=omp_get_wtime();
+		n_is = mis_shared_2( col_ind, row_ptr,
+								 V, I, n, 8);
+		const double end=omp_get_wtime();
 	
-	
-	cout<<"wall clock time = " <<end-start<<endl;
+		cout<<"wall clock time = " <<end-start<<endl;
 	}
 
 	cout<<"n_omp=16"<<endl;
 	for(int p=0; p<5; p++){
 	
-	const double start=omp_get_wtime();
-	int n_is = mis_shared_2( col_ind, row_ptr,
-							V, I, n, 16);
-	const double end=omp_get_wtime();
+		const double start=omp_get_wtime();
+		n_is = mis_shared_2( col_ind, row_ptr,
+								 V, I, n, 16);
+		const double end=omp_get_wtime();
 	
-	
-	cout<<"wall clock time = " <<end-start<<endl;
+		cout<<"wall clock time = " <<end-start<<endl;
 	}
 
 	cout<<"n_omp=32"<<endl;
 	for(int p=0; p<5; p++){
-	  //cout<<"generating maximum independent set."<<endl;
-	const double start=omp_get_wtime();
-	int n_is = mis_shared_2( col_ind, row_ptr,
-							V, I, n, 32);
-	const double end=omp_get_wtime();
-	//	cout<<"done!"<<endl;	   
+		//cout<<"generating maximum independent set."<<endl;
+		const double start=omp_get_wtime();
+		n_is = mis_shared_2( col_ind, row_ptr,
+								 V, I, n, 32);
+		const double end=omp_get_wtime();
+		//	cout<<"done!"<<endl;	   
 	
-	cout<<"wall clock time = " <<end-start<<endl;
+		cout<<"wall clock time = " <<end-start<<endl;
 
-	//	cout<<endl<<"result "<<n_is<<endl;
-	// for(int i=0; i<n_is; i++)
-	// 	cout<<I[i]<<endl;
-	
+		//	cout<<endl<<"result "<<n_is<<endl;
+		// for(int i=0; i<n_is; i++)
+		// 	cout<<I[i]<<endl;
 	
 	}
 
-	
 	// cout<<endl<<"result "<<n_is<<endl;
 	// for(int i=0; i<n_is; i++)
 	// 	cout<<I[i]<<endl;
-	
+
 	return 0;
   
 }
