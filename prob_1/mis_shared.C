@@ -222,15 +222,15 @@ int mis_shared_2( const vector<int>& col_ind,
 
 			// cout<<n<<" "<<n_done<<endl;
 
-			if(flag==0)
-				cout<<n_done<<endl;
+			// if(flag==0)
+			// 	cout<<n_done<<endl;
 			
 			if(n_done==n)
 			flag=1;
 		}
 
 			if(flag==1){
-				cout<<"break "<<omp_get_thread_num()<<endl;
+			  //				cout<<"break "<<omp_get_thread_num()<<endl; 
 				
 				break;
 			}
@@ -328,9 +328,9 @@ int mis_shared_2( const vector<int>& col_ind,
 int main(int argc, char **argv)
 {
 	// number of vertices
-	const int n =  1000;
+	const int n =  100000;
 	// number of edges
-	const int ne = 4000;
+	const int ne = 400000;
 	// number of threads
 	// const int nt=4;
 	
@@ -368,11 +368,11 @@ int main(int argc, char **argv)
 	int n_is;
 	
 	cout<<"n_omp=1"<<endl;
-	for(int p=0; p<1; p++){
+	for(int p=0; p<0; p++){
 	
 		const double start=omp_get_wtime();
 		n_is = mis_shared_2( col_ind, row_ptr,
-								 V, I, n, 4);
+								 V, I, n, 1);
 		const double end=omp_get_wtime();
 	
 		cout<<"wall clock time = " <<end-start<<endl;
