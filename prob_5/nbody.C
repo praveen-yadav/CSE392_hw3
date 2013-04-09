@@ -149,7 +149,7 @@ int main()
 
 	cout<<"wall clock time = "<<end-start<<endl;
 	
-	// write_points(points, morton_ids, np);
+	write_points(points, morton_ids, np);
 	
 	return 0;
 }
