@@ -17,3 +17,4 @@ Parallel tree construction
 6. nodes->ids (append level info)
 7. remove duplicates
 
+want to include msort
