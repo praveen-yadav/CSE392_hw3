@@ -1,1 +1,4 @@
 
+[submodule "msort"]
+	path = msort
+	url = git://github.com/hysakamoto/msort.git
