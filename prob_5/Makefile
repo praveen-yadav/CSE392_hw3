@@ -4,7 +4,7 @@
 nbody: nbody.o particle.o
 	g++ -Wall -fopenmp -o nbody nbody.o particle.o
 
-nbody.o: nbody.C
+nbody.o: nbody.C qtree.h point.h
 	g++ -c nbody.C -fopenmp 
 
 particle.o: particle.C
