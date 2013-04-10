@@ -26,7 +26,6 @@ const int kids_pos[4][2] =
 class qtree
 {
 public:
-
 	// using nid and level, we can identify the node
 	int lid; // local node id [0, 1, 2, 3]
 	int gid; // global node id
@@ -38,6 +37,9 @@ public:
 	// particle global ids that a node has
 	vector<int> idx;
 
+	// starting point in the array for parallel
+	int st_pt;
+	
 	int np; // number of points
 
 	// pointers to relatives
@@ -54,22 +56,26 @@ public:
 	int max_level;
 	int max_pts;
 
-	// constructor for the root
-	qtree(qtree* pr, int lv, point anch, int mxlv, int mxpts,
-		  point wid, int id, particle* pcl, int n  ){
-		initialize( pr, lv, anch, mxlv, mxpts,
-					wid, id, pcl, n, 0 );
-		idx.resize(n,0);
-		for(int i=0; i<n; i++)
-			idx[i]=i;
-		lid = 0;
-		gid = 0;
-	}
-	// constructor for the children
+	// constructor
 	qtree(){;}
 
 	void initialize(qtree* pr, int lv, point anch, int mxlv, int mxpts,
-					point wid, int l_id, particle* pcl, int n, int g_id );
+					point wid, int l_id, particle* pcl, int n, int g_id,
+					int st_point );
+	void initialize_root(qtree* pr, int lv, point anch, int mxlv, int mxpts,
+						 point wid, int id, particle* pcl, int n,
+						 const int st_point )
+	{
+		initialize( pr, lv, anch, mxlv, mxpts,
+					wid, id, pcl, n, 0, st_point );
+		idx.resize(n,0);
+		for(int i=0; i<n; i++){
+			idx[i]=st_point+i;
+		}
+		lid = 0;
+		gid = 0;
+
+	};
 	int insert_points( );
 	void create_kids();
 	void show_kids();
@@ -79,7 +85,7 @@ public:
 
 void qtree::initialize( qtree* pr, int lv, point anch, int mxlv, int mxpts,
 						point wid, int l_id, particle* pcl, int n,
-						int g_id)
+						int g_id, int st_point )
 {
 	lid = l_id;
 	gid = g_id;
@@ -95,6 +101,7 @@ void qtree::initialize( qtree* pr, int lv, point anch, int mxlv, int mxpts,
 	parent = pr;  // parent of the node
 	max_level = mxlv;
 	max_pts = mxpts;
+	st_pt = st_point;
 	for(int i=0; i<4; i++)
 		kids_exist[i] = 1;
 }
@@ -135,7 +142,7 @@ void qtree::create_kids()
 
 		kids[i].initialize(this, kid_level, kid_anchor,
 						   max_level, max_pts, kid_width, i, pts, np,
-						   i+gid*4 );
+						   i+gid*4, st_pt );
 	}
 
 	// not leaf any more
@@ -143,8 +150,13 @@ void qtree::create_kids()
 	
 	// now insert points to kids
 	for(int i=0; i<4; i++){
+		
 		kids[i].points_in_node(idx);
 
+		// cout<<"RESTL "<<kids[i].lid<<endl;
+		// for(int j=0; j<kids[i].idx.size(); j++)
+			// cout<<kids[i].idx[j]<<endl;
+		
 		if(kids[i].insert_points())
 			kids_exist[i] = 0;
 	}
@@ -166,29 +178,41 @@ void qtree::points_in_node(vector<int>& idx_parent)
 {
 	int npts = idx_parent.size();
 
+		
 	for(int i=0; i<npts; i++){
-		int mt_id = (pts)[idx_parent[i]].mt_id;
+		int real_idx = idx_parent[i]-st_pt;
+
+		int mt_id = (pts)[real_idx].mt_id;
 		int offset = max_level-level;
+	
 		if(( (mt_id & mt_checker[offset]) >> (offset*2)  ) == lid){
-			idx.push_back(idx_parent[i]);
-			// cout<<(*pts)[i].x<<" "<<(*pts)[i].y
-			// 	<<" "<<(*pts)[i].mt_id<<" is in box "<<lid
-			// 	<<" on level "<<level<<endl;
+			idx.push_back(real_idx+st_pt);
+			// cout<<real_idx<<" "<<(pts)[real_idx].x<<" "<<(pts)[real_idx].y
+				// <<" "<<(pts)[real_idx].mt_id<<" is in box "<<lid
+				// <<" on level "<<level<<endl;
 		}
 	}
-
-
+	
+	
 }
 
 void qtree::show_tree()
 {
-	cout<<"level: "<<level<<endl
-		// <<"lid:   "<<lid<<endl
-		<<"gid:   "<<gid<<endl
-		<<"n_pts: "<<idx.size()<<endl<<endl;
+	// cout<<"level: "<<level<<endl
+	// 	// <<"lid:   "<<lid<<endl
+	// 	<<"gid:   "<<gid<<endl
+		// <<"n_pts: "<<idx.size()<<endl<<endl;
 	for(int i=0; i<4; i++){
-		if(! kids[i].isleaf)
+		if(!kids[i].isleaf){
+			// cout<<"not leaf"<<endl;
 			kids[i].show_tree();
+		}
+		else{
+			cout<<kids[i].gid<<" leaf"<<endl;
+			for(int j=0; j<kids[i].idx.size(); j++)
+				cout<<kids[i].idx[j]<<endl;
+		}
+		// cout<<endl;
 	}
 
 	
