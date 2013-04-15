@@ -4,10 +4,10 @@
 nbody: nbody.o particle.o
 	g++ -Wall -fopenmp -o nbody nbody.o particle.o
 
-nbody.o: nbody.C qtree.h point.h
+nbody.o: nbody.C qtree.h point.h particle.h
 	g++ -c nbody.C -fopenmp 
 
-particle.o: particle.C
+particle.o: particle.C particle.h
 	g++ -c particle.C -fopenmp 
 
 run:

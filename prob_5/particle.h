@@ -9,7 +9,7 @@
 using namespace std;
 
 const int bits_y[13] = {2, 8, 32, 128, 512, 2048, 8192, 32768, 131072,
-							54288, 2097152, 8388608, 33554432};
+							524288, 2097152, 8388608, 33554432};
 const int bits_x[13] = {1, 4, 16, 64, 256, 1024, 4096, 16384, 65536,
 							262144, 1048576, 4194304, 16777216};
 
@@ -17,19 +17,25 @@ const int bits_x[13] = {1, 4, 16, 64, 256, 1024, 4096, 16384, 65536,
 class particle
 {
 public:
-void gen_coords( const double xmin, const double xrange,
+	void gen_coords( const double xmin, const double xrange,
 					 const double ymin, const double yrange );
-int num;
-double x;
-double y;
-int mt_id;
-// particle(int);
-void get_morton_id( const double xmin,
+	void gen_coords_cluster( const double xmin, const double xrange, 
+							 const double ymin, const double yrange,
+							 const double xcenter, const double ycenter,
+							 const double rrange
+							 );
+	// int num;
+	double x;
+	double y;
+	long mt_id;
+	// particle(int);
+	void get_morton_id( const double xmin,
 						const double ymin,
 						const double x_grid_size,
 						const double y_grid_size,
 						const int max_level );
 };
 
+const double pi=3.14159265359;
 
 #endif // PARTICLES_H

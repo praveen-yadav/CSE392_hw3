@@ -1,4 +1,5 @@
 #include "particle.h"
+#include <cmath>
 
 void particle::gen_coords( const double xmin, const double xrange, 
 						   const double ymin, const double yrange
@@ -10,6 +11,23 @@ void particle::gen_coords( const double xmin, const double xrange,
 	return;
 }
 
+void particle::gen_coords_cluster( const double xmin, const double xrange, 
+								   const double ymin, const double yrange,
+								   const double xcenter, const double ycenter,
+								   const double rrange
+								   )
+{
+	const double r = ((double)rand()/(double)RAND_MAX) * rrange;
+	const double theta = ((double)rand()/(double)RAND_MAX) * 2*pi;
+
+	x = xcenter + r*cos(theta);
+	y = ycenter + r*sin(theta);
+
+	if(x>(xmin+xrange))
+		x = x*(x/xrange-int(x/xrange))+xmin;
+	if(y>(ymin+yrange))
+		y = y*(y/yrange-int(y/yrange))+ymin;
+}
 
 void particle::get_morton_id( const double xmin,
 							  const double ymin,
@@ -29,6 +47,6 @@ void particle::get_morton_id( const double xmin,
 	}
 	
 	mt_id = xc_mid | yc_mid;
-
+	
 	return;
 }
