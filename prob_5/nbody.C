@@ -9,8 +9,10 @@
 #include <bitset>
 
 #include "../msort/msort.h"
+#include "point.h"
 #include "particle.h"
 #include "qtree.h"
+
 
 using namespace std;
 
@@ -80,49 +82,33 @@ int write_points( const vector<particle>& pts,
 	ofile.open ("points.dat");
 
 	for (int i=0; i<np; i++){
-		ofile<<pts[i].x<<" "<<pts[i].y<<" "<<pts[i].mt_id<<endl;
+		ofile<<pts[i].x<<" "<<pts[i].y<<" "<<pts[i].mt_id<<" "<<pts[i].m<<endl;
 	}
 	ofile.close();
 
 	return 0;
 }
 
+// not necessary?
 void average_trees( qtree* qts, const int nt )
 {
-	// for(int i=0; i<nt; i++)
-	// 	qts[i].show_tree();
+		
+	return;
+}
 
-	// qtree qt;
-	// qt.initialize_root( NULL, 0, anch, max_level,
-	// 					max_pts_per_node, width, 0,
-	// 					pts, np, 0, st_pt, np_proc );
-
-	// for(int i=0; i<nt; i++){
-	// 	for(int j=0; j<4; j++){
-	// 		if
-	// 	}
-
-	// }
+// evaluate the forces using quadtree
+void evaluate_trees()
+{
 	
-	
-	// for(int i=0; i<4; i++){
-	// 	for(int j=0; j<4; j++){
-	// 		for(int k=0; k<nt; k++){
-	// 			if(qts[k].kids[j].kids[i].idx.size())
-	// 				cout<<k<<" "<<k<<" "<<i<<" "<<
-	// 					qts[k].kids[j].kids[i].gid<<endl;
-	// 		}
-	// 	}
-	// }
 	
 	
 	return;
 }
 
+
+// main function
 int main()
 {
-	n_th = 2;
-	
 	// thread nesting enabled
 	omp_set_nested(1);
 	
@@ -136,8 +122,13 @@ int main()
 	const double ymax = 1;
 
 	// number of poitns
-	const int np = 2000000;
+	// const int np = 2000000;
+	const int np = 2000;
 
+	// mass
+	const double mmin = 1.0;
+	const double mrange = 10;
+	
 	// information necessary for qtree construction
 	const int max_level = 10;
 	const int max_pts_per_node = 1;
@@ -155,17 +146,22 @@ int main()
 	pts.resize(np);
 	#pragma omp parallel for default(none), shared(pts)
 	for(int i=0; i<np; i++){
-
-		if(i<np/30)
-			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange, xmin+xrange/4,
-									  ymin+yrange/3, min(xrange,yrange)/5);
-		else if(i<np/10)
-			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange, xmin+3*xrange/4,
-									  ymin+2*yrange/3, min(xrange,yrange)/6);
-		else
-		pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
-								  xmin+3*xrange/4, ymin,
-								  min(xrange,yrange)/6);
+		if(i<np/30){
+			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
+				mmin, mrange, xmin+xrange/4,
+				ymin+yrange/3, min(xrange,yrange)/5);
+		}
+		else if(i<np/10) {
+			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
+				mmin, mrange, xmin+3*xrange/4,
+				ymin+2*yrange/3, min(xrange,yrange)/6);
+		}
+		else{
+			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
+				mmin, mrange,
+				xmin+3*xrange/4, ymin,
+				min(xrange,yrange)/6);
+		}
 
 		// pts[i].gen_coords(xmin, xrange, ymin, yrange);
 	}
@@ -181,7 +177,7 @@ int main()
 	mergesort<particle>(&pts[0], nt, np, &tmp[0], compar_vector);
 
 	// read points data
-	read_points(pts, np);
+	// read_points(pts, np);
 	
 	qtree* qt1 = new qtree;
 	// parallel tree construction
@@ -232,12 +228,14 @@ int main()
 	end=omp_get_wtime();
 	cout<<"wall clock time = "<<end-start<<endl;
 
+
+	evaluate_trees();
 	
-	// average_trees(qts, nt);
-	
-	// write_points(pts, np);
+	write_points(pts, np);
 
 	delete qt1, qt2, qt4, qt8;
+
+	// delete qt1;
 	
 	return 0;
 }

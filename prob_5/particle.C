@@ -2,17 +2,19 @@
 #include <cmath>
 
 void particle::gen_coords( const double xmin, const double xrange, 
-						   const double ymin, const double yrange
-						   )
+						   const double ymin, const double yrange,
+						   const double mmin, const double mrange )
 {
-	x=((double)rand()/(double)RAND_MAX) * xrange + xmin;
-	y=((double)rand()/(double)RAND_MAX) * yrange + ymin;
-
+	x = ((double)rand()/(double)RAND_MAX) * xrange + xmin;
+	y = ((double)rand()/(double)RAND_MAX) * yrange + ymin;
+	m = ((double)rand()/(double)RAND_MAX) * mrange + mmin;
+	
 	return;
 }
 
 void particle::gen_coords_cluster( const double xmin, const double xrange, 
 								   const double ymin, const double yrange,
+								   const double mmin, const double mrange,
 								   const double xcenter, const double ycenter,
 								   const double rrange
 								   )
@@ -27,6 +29,10 @@ void particle::gen_coords_cluster( const double xmin, const double xrange,
 		x = x*(x/xrange-int(x/xrange))+xmin;
 	if(y>(ymin+yrange))
 		y = y*(y/yrange-int(y/yrange))+ymin;
+
+	m = ((double)rand()/(double)RAND_MAX) * mrange + mmin;
+
+	return;
 }
 
 void particle::get_morton_id( const double xmin,
