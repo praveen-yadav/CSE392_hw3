@@ -144,8 +144,7 @@ int qtree::insert_points( int n_threads )
 		{
 			#pragma omp section
 			{
-				#pragma omp critical
-				cout<<omp_get_thread_num()<<" start"<<endl;
+				// cout<<omp_get_thread_num()<<" start"<<endl;
 				kids[0].points_in_node(idx);
 				if(kids[0].insert_points(n_threads/2))
 					kids_exist[0] = 0;
@@ -153,17 +152,16 @@ int qtree::insert_points( int n_threads )
 				kids[1].points_in_node(idx);
 				if(kids[1].insert_points(n_threads/2))
 					kids_exist[1] = 0;
-				#pragma omp critical
-				{
-				cout<<omp_get_thread_num()<<" "
-					<<kids[0].idx.size()+kids[1].idx.size()<<" end"<<endl;
-				}
+				// #pragma omp critical
+				// {
+				// 	cout<<omp_get_thread_num()<<" "
+				// 	<<kids[0].idx.size()+kids[1].idx.size()<<" end"<<endl;
+				// }
 			}
 
 			#pragma omp section
 			{
-				#pragma omp critical
-				cout<<omp_get_thread_num()<<" start"<<endl;
+				// cout<<omp_get_thread_num()<<" start"<<endl;
 				kids[2].points_in_node(idx);
 				if(kids[2].insert_points(n_threads-n_threads/2))
 					kids_exist[2] = 0;
@@ -172,11 +170,12 @@ int qtree::insert_points( int n_threads )
 				if(kids[3].insert_points(n_threads-n_threads/2))
 					kids_exist[3] = 0;
 
-				#pragma omp critical
-				{
-				cout<<omp_get_thread_num()<<" "
-					<<kids[1].idx.size()+kids[2].idx.size()<<" end"<<endl;
-				}
+				// 	#pragma omp critical
+				// {
+				// 	cout<<omp_get_thread_num()<<" "
+				// 	<<kids[2].idx.size()+kids[3].idx.size()<<" end"<<endl;
+				// }
+				
 
 			}
 

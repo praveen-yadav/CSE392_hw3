@@ -152,68 +152,99 @@ int main()
 
 	// generate points
 	vector<particle> pts;
-	// pts.resize(np);
-	// #pragma omp parallel for default(none), shared(pts)
-	// for(int i=0; i<np; i++){
+	pts.resize(np);
+	#pragma omp parallel for default(none), shared(pts)
+	for(int i=0; i<np; i++){
 
-	// 	// if(i<np/30)
-	// 	// 	pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange, xmin+xrange/4,
-	// 	// 							  ymin+yrange/3, min(xrange,yrange)/5);
-	// 	// else if(i<np/10)
-	// 	// 	pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange, xmin+3*xrange/4,
-	// 	// 							  ymin+2*yrange/3, min(xrange,yrange)/6);
-	// 	// else
-	// 							// pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange, xmin+3*xrange/4,
-	// 								  // ymin, min(xrange,yrange)/6);
+		// if(i<np/30)
+		// 	pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange, xmin+xrange/4,
+		// 							  ymin+yrange/3, min(xrange,yrange)/5);
+		// else if(i<np/10)
+		// 	pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange, xmin+3*xrange/4,
+		// 							  ymin+2*yrange/3, min(xrange,yrange)/6);
+		// else
+		pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
+								  xmin+3*xrange/4, ymin,
+								  min(xrange,yrange)/6);
 
-	// 	pts[i].gen_coords(xmin, xrange, ymin, yrange);
-	// }
+		// pts[i].gen_coords(xmin, xrange, ymin, yrange);
+	}
 	
-	// // compute morton ids
-	// #pragma omp parallel for default(none), shared(pts)
-	// for(int i=0; i<np; i++)
-	// 	pts[i].get_morton_id(xmin, ymin, x_grid_size, y_grid_size, max_level);
+	// compute morton ids
+	#pragma omp parallel for default(none), shared(pts)
+	for(int i=0; i<np; i++)
+		pts[i].get_morton_id(xmin, ymin, x_grid_size, y_grid_size, max_level);
 	
-	// // parallel merge sort
-	// vector<particle> tmp;
-	// tmp.resize(np);
-	// mergesort<particle>(&pts[0], nt, np, &tmp[0], compar_vector);
+	// parallel merge sort
+	vector<particle> tmp;
+	tmp.resize(np);
+	mergesort<particle>(&pts[0], nt, np, &tmp[0], compar_vector);
 
+	qtree* qt1 = new qtree;
+	
 	// read points data
 	read_points(pts, np);
-	
-	// partition ids for parallel tree build
-	int* np_local = new int[nt]; // length of partition
-	int* st_pt = new int[nt]; // starting point of partition
-	for(int i=0; i<nt-1; i++){
-		np_local[i] = np/nt;
-	}
-	np_local[nt-1] = np-np/nt*(nt-1);
-	st_pt[0] = 0;
-	for(int i=1; i<nt; i++){
-		st_pt[i] = st_pt[i-1]+np_local[i-1];
-	}
-
-	// pointer for quadtrees
-	qtree* qts = new qtree[nt];
-
 	// parallel tree construction
 	double start=omp_get_wtime();
 	// #pragma omp parallel for shared(pts, np_local)
 	for(int i=0; i<nt; i++){
 		// build tree
 		build_tree( xmin, ymin, max_pts_per_node, max_level, width,
-		&pts, np, &qts[i], st_pt[i], np_local[i], 4);
+		&pts, np, qt1, 0, np, 1);
 	}
 	double end=omp_get_wtime();
-	
 	cout<<"wall clock time = "<<end-start<<endl;
 
+	qtree* qt2 = new qtree;
+	// read points data
+	read_points(pts, np);
+	// parallel tree construction
+	start=omp_get_wtime();
+	// #pragma omp parallel for shared(pts, np_local)
+	for(int i=0; i<nt; i++){
+		// build tree
+		build_tree( xmin, ymin, max_pts_per_node, max_level, width,
+		&pts, np, qt2, 0, np, 2);
+	}
+	end=omp_get_wtime();
+	cout<<"wall clock time = "<<end-start<<endl;
+
+	
+	qtree* qt4 = new qtree;
+	// read points data
+	read_points(pts, np);
+	// parallel tree construction
+	start=omp_get_wtime();
+	// #pragma omp parallel for shared(pts, np_local)
+	for(int i=0; i<nt; i++){
+		// build tree
+		build_tree( xmin, ymin, max_pts_per_node, max_level, width,
+		&pts, np, qt4, 0, np, 4);
+	}
+	end=omp_get_wtime();
+	cout<<"wall clock time = "<<end-start<<endl;
+
+
+	qtree* qt8 = new qtree;
+	// read points data
+	read_points(pts, np);
+	// parallel tree construction
+	start=omp_get_wtime();
+	// #pragma omp parallel for shared(pts, np_local)
+	for(int i=0; i<nt; i++){
+		// build tree
+		build_tree( xmin, ymin, max_pts_per_node, max_level, width,
+		&pts, np, qt8, 0, np, 8);
+	}
+	end=omp_get_wtime();
+	cout<<"wall clock time = "<<end-start<<endl;
+
+	
 	// average_trees(qts, nt);
 	
-	write_points(pts, np);
+	// write_points(pts, np);
 
-	delete[] qts;
+	delete qt1, qt2, qt4, qt8;
 	
 	return 0;
 }
