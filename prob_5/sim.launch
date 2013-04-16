@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# Simple script for submitting multiple serial
+# jobs (e.g. parametric studies) using a script wrapper
+# to launch the jobs.
+#
+# To use, build the launcher executable and your
+# serial application(s) and place them in your WORKDIR
+# directory.  Then, edit the CONTROL_FILE to specify 
+# each executable per process.
+#-------------------------------------------------------
+#-------------------------------------------------------
+# 
+#         <------ Setup Parameters ------>
+#
+#SBATCH -J NB          # Job name
+#SBATCH -n 16                 # Total number of tasks (assumes 16 tasks/node)
+##SBATCH -N 1           # total number of nodes
+#SBATCH -p normal              # Queue name
+#SBATCH -o NB.o%j      # Name of stdout output file (%j expands to jobid)
+#SBATCH -t 03:00:00            # Run time (hh:mm:ss)
+#SBATCH -A ICES-Students       # Allocation 
+
+
+export WORKDIR=.
+
+cd $WORKDIR
+
+./nbody 16
+./nbody 18
+./nbody 20
+./nbody 22

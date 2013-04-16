@@ -18,16 +18,25 @@ class particle
 {
 public:
 	void gen_coords( const double xmin, const double xrange,
-					 const double ymin, const double yrange );
+					 const double ymin, const double yrange,
+					 const double mmin, const double mrange );
+
 	void gen_coords_cluster( const double xmin, const double xrange, 
-							 const double ymin, const double yrange,
-							 const double xcenter, const double ycenter,
-							 const double rrange
-							 );
-	// int num;
+									   const double ymin, const double yrange,
+									   const double mmin, const double mrange,
+									   const double xcenter, const double ycenter,
+									   const double rrange
+									   );
+	// coordinates
 	double x;
 	double y;
+	// morton id
 	long mt_id;
+	// mass
+	double m;
+	// potential
+	double u;
+	
 	// particle(int);
 	void get_morton_id( const double xmin,
 						const double ymin,
