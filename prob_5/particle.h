@@ -34,6 +34,8 @@ public:
 	long mt_id;
 	// mass
 	double m;
+	// potential
+	double u;
 	
 	// particle(int);
 	void get_morton_id( const double xmin,

@@ -7,7 +7,8 @@ void particle::gen_coords( const double xmin, const double xrange,
 {
 	x = ((double)rand()/(double)RAND_MAX) * xrange + xmin;
 	y = ((double)rand()/(double)RAND_MAX) * yrange + ymin;
-	m = ((double)rand()/(double)RAND_MAX) * mrange + mmin;
+	m = 1.0;//((double)rand()/(double)RAND_MAX) * mrange + mmin;
+	u = 0.0;
 	
 	return;
 }
@@ -35,10 +36,9 @@ void particle::gen_coords_cluster( const double xmin, const double xrange,
 	if(y<ymin)
 		y = y + yrange* int((ymin-y)/yrange+1);
 
-
+	m = 1.0;//((double)rand()/(double)RAND_MAX) * mrange + mmin;
+	u = 0.0;
 	
-	m = ((double)rand()/(double)RAND_MAX) * mrange + mmin;
-
 	return;
 }
 

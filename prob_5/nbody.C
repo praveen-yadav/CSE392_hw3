@@ -24,6 +24,24 @@ int compar_vector( const particle left, const particle right)
 	return left.mt_id<right.mt_id;
 }
 
+// 2-norm
+double norm2( const double x1, const double y1,
+			  const double x2, const double y2)
+{
+	return sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+}
+
+
+// kernel
+double g_kernel( const double x1, const double y1,
+				 const double x2, const double y2) 
+{
+	if ((x1!=x2) && (y1!=y2))
+		return -1/(2*pi) * log( norm2(x1, y1, x2, y2) );
+	
+	return 0;
+}
+
 void build_tree( const double xmin,
 				 const double ymin,
 				 const int max_pts_per_node,
@@ -77,7 +95,8 @@ int write_points( const vector<particle>& pts,
 	ofile.open ("points.dat");
 
 	for (int i=0; i<np; i++){
-		ofile<<pts[i].x<<" "<<pts[i].y<<" "<<pts[i].mt_id<<" "<<pts[i].m<<endl;
+		ofile<<pts[i].x<<" "<<pts[i].y<<" "<<pts[i].mt_id<<" "
+			 <<pts[i].m<<" "<<pts[i].u<<endl;
 	}
 	ofile.close();
 
@@ -150,6 +169,33 @@ int well_separated( qtree* target, qtree* source )
 	return 0;
 }
 
+// evaluate the potential at target using individual particles
+double direct_evaluation( const int id, qtree* source,
+						const vector<particle>& pts)
+{
+	double u=0.0;
+	
+	for(int i=0; i<source->idx.size(); i++){
+		u += g_kernel( pts[id].x, pts[id].y,
+					   pts[source->idx[i]].x, pts[source->idx[i]].y )
+			* pts[source->idx[i]].m;
+	}
+		
+
+	return u;
+}
+
+// evaluate the potential at a target using a box
+double approximate_evaluation( const int id, qtree* source,
+							   const vector<particle>& pts )
+{
+	double u = g_kernel( pts[id].x , pts[id].y,
+						 source->centroid.x, source->centroid.y )
+		* source->total_mass;
+
+	return u;
+}
+
 // evaluate the forces using quadtree
 void evaluate_trees( const int id, const int level,
 					 qtree* target, qtree* source, vector<particle>& pts)
@@ -166,9 +212,10 @@ void evaluate_trees( const int id, const int level,
 		if(!well_separated(target, &(source->kids[i]))){
 			// but the kid is a leaf
 			if(source->kids[i].isleaf){
-				cout<<target->gid<<" and "<<source->kids[i].gid
-					<<" need direct evaluation on level "
-					<<level+1<<endl;	// cout<<"leaf"<<endl;
+				// cout<<target->gid<<" and "<<source->kids[i].gid
+					// <<" need direct evaluation on level "
+					// <<level+1<<endl;	// cout<<"leaf"<<endl;
+				pts[id].u += direct_evaluation(id, &(source->kids[i]), pts);
 			}
 			// not leaf
 			else{
@@ -178,9 +225,10 @@ void evaluate_trees( const int id, const int level,
 			}
 		}
 		else{
-			cout<<target->gid<<" and "<<source->kids[i].gid
-				<<" are sufficiently SEPARATED on level "
-				<<level+1<<" "<<target->level<<endl;
+			// cout<<target->gid<<" and "<<source->kids[i].gid
+				// <<" are sufficiently SEPARATED on level "
+				// <<level+1<<" "<<target->level<<endl;
+			pts[id].u += approximate_evaluation(id, &(source->kids[i]), pts );
 		}
 	}
 		
@@ -205,17 +253,19 @@ int main()
 	const double ymax = 1;
 
 	// number of poitns
-	// const int np = 2000000;
-	const int np = 5;
+	const int np = 50000;
+	// const int np = 2000;
 
 	// mass
 	const double mmin = 1.0;
 	const double mrange = 10;
 	
 	// information necessary for qtree construction
-	const int max_level = 2;
-	const int max_pts_per_node = 1;
+	const int max_level = 2*log(np)/log(16);
+	const int max_pts_per_node = np/(pow(2,max_level));
 
+	cout<<max_level<<endl<<max_pts_per_node<<endl;
+	
 	// get domain range and grid size
 	const double xrange = xmax-xmin;
 	const double yrange = ymax-ymin;
@@ -224,6 +274,9 @@ int main()
 	const double y_grid_size = (ymax-ymin)/pow(2.,max_level);
 	const point width(xrange, yrange);
 
+	// for measuring wall clock time
+	double start, end;
+	
 	// generate points
 	vector<particle> pts;
 	pts.resize(np);
@@ -242,17 +295,20 @@ int main()
 		else{
 			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
 				mmin, mrange,
-				xmin+1*xrange/6, ymin,
-				min(xrange,yrange)/3);
+				xmin+xrange/4, ymin+yrange/4,
+				min(xrange,yrange)/5);
 		}
 
 		// pts[i].gen_coords(xmin, xrange, ymin, yrange);
 	}
 	
 	// compute morton ids
+	start=omp_get_wtime();	
 	#pragma omp parallel for default(none), shared(pts)
 	for(int i=0; i<np; i++)
 		pts[i].get_morton_id(xmin, ymin, x_grid_size, y_grid_size, max_level);
+	end=omp_get_wtime();	
+	cout<<"get_morton_id: "<<end-start<<endl;
 	
 	// parallel merge sort
 	// vector<particle> tmp;
@@ -265,23 +321,27 @@ int main()
 	n_th=1;
 	qtree* qt1 = new qtree;
 	// parallel tree construction
-	double start=omp_get_wtime();
-	// #pragma omp parallel for shared(pts, np_local)
+	start=omp_get_wtime();
 	for(int i=0; i<nt; i++){
 		// build tree
 		build_tree( xmin, ymin, max_pts_per_node, max_level, width,
 		&pts, np, qt1, 0, np, 1);
 	}
-	double end=omp_get_wtime();
-	cout<<"wall clock time = "<<end-start<<endl;
+	end=omp_get_wtime();
+	cout<<"build_tree: "<<end-start<<endl;
 
-	
-	evaluate_trees(0, 0, qt1, qt1, pts);
-	cout<<"done"<<endl;
+	start=omp_get_wtime();	
+	#pragma omp parallel for shared(qt1, pts) num_threads(4)
+	for(int i=0; i<np; i++)
+		evaluate_trees(i, 0, qt1, qt1, pts);
+	end=omp_get_wtime();
+	cout<<"evaluate_trees: "<<end-start<<endl;
 	
 	ofstream ofs;
-	write_boxes( qt1, ofs, 0 );
+	write_boxes( qt1, ofs, 1 );
 
+	write_points(pts, np);
+	
 	delete qt1;
 
 	
@@ -325,8 +385,6 @@ int main()
 	// cout<<"wall clock time = "<<end-start<<endl;
 
 	
-	// write_points(pts, np);
-
 	// delete qt1, qt2, qt4, qt8;
 
 	
