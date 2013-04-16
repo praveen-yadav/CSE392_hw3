@@ -24,6 +24,10 @@ const int kids_pos[4][2] =
 		{1,1}
     };
 
+// keep track of number of threads at work
+extern int n_th;
+
+
 class qtree
 {
 public:

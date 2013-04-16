@@ -25,11 +25,18 @@ void particle::gen_coords_cluster( const double xmin, const double xrange,
 	x = xcenter + r*cos(theta);
 	y = ycenter + r*sin(theta);
 
+	// if the point coordinates is out of the domain
 	if(x>(xmin+xrange))
-		x = x*(x/xrange-int(x/xrange))+xmin;
+		x = x - xrange* int((x-xmin)/xrange);
 	if(y>(ymin+yrange))
-		y = y*(y/yrange-int(y/yrange))+ymin;
+		y = y - yrange* int((y-ymin)/yrange);
+	if(x<xmin)
+		x = x + xrange* int((xmin-x)/xrange+1);
+	if(y<ymin)
+		y = y + yrange* int((ymin-y)/yrange+1);
 
+
+	
 	m = ((double)rand()/(double)RAND_MAX) * mrange + mmin;
 
 	return;
