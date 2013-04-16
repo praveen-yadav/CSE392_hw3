@@ -148,9 +148,29 @@ qtree* get_local_node(const int id, qtree* qt, const int level )
 	for(int i=0; i<4; i++){
 		for(int j=0; j<qt->kids[i].idx.size(); j++){
 			if (id==qt->kids[i].idx[j]){
+				return &(qt->kids[i]);
 				return get_local_node(id, &(qt->kids[i]), level-1);
 			}
 		}
+	}
+	
+	return NULL;
+}
+
+// get which kid has the node with id
+qtree* get_local_node(const int id, qtree* qt, const vector<particle>& pts )
+{
+	if (qt->isleaf)
+		return qt;
+	
+	for(int i=0; i<4; i++){
+		if( pts[id].x > qt->kids[i].anchor.x &&
+			pts[id].x < (qt->kids[i].anchor.x+qt->kids[i].width.x) &&
+			pts[id].y > qt->kids[i].anchor.y &&
+			pts[id].y < (qt->kids[i].anchor.y+qt->kids[i].width.y) )
+
+			return &(qt->kids[i]);
+			
 	}
 	
 	return NULL;
@@ -200,9 +220,11 @@ double approximate_evaluation( const int id, qtree* source,
 void evaluate_trees( const int id, const int level,
 					 qtree* target, qtree* source, vector<particle>& pts)
 {
-	// get qtree pointer for the kid that has the id
-	target = get_local_node(id, target, 1);
+	// get qtree pointer of the kid that has the pts[id]
+	// target = get_local_node(id, target, 1);
+	target = get_local_node(id, target, pts);
 
+	
 	// cout<<"x "<<pts[id].x<<" y "<<pts[id].y<<endl;
 	// cout<<"gid "<<target->gid<<" level "<<target->level<<endl;
 
@@ -253,7 +275,7 @@ int main()
 	const double ymax = 1;
 
 	// number of poitns
-	const int np = 50000;
+	const int np = 20000;
 	// const int np = 2000;
 
 	// mass
@@ -262,9 +284,10 @@ int main()
 	
 	// information necessary for qtree construction
 	const int max_level = 2*log(np)/log(16);
-	const int max_pts_per_node = np/(pow(2,max_level));
+	const int max_pts_per_node = max(1.0,np/(pow(2,max_level)));
 
-	cout<<max_level<<endl<<max_pts_per_node<<endl;
+	cout<<"max level: "<<max_level<<" "<<endl
+		<<"max pts per node: "<<max_pts_per_node<<endl;
 	
 	// get domain range and grid size
 	const double xrange = xmax-xmin;
@@ -318,32 +341,37 @@ int main()
 	// read points data
 	// read_points(pts, np);
 
-	n_th=1;
-	qtree* qt1 = new qtree;
-	// parallel tree construction
-	start=omp_get_wtime();
-	for(int i=0; i<nt; i++){
-		// build tree
-		build_tree( xmin, ymin, max_pts_per_node, max_level, width,
-		&pts, np, qt1, 0, np, 1);
+	cout<<endl;
+	for(int i=0; i<4; i++){
+		n_th=pow(2.0,i);
+		cout<<"proc: "<<n_th<<endl;
+			
+		qtree* qt1 = new qtree;
+		// parallel tree construction
+		start=omp_get_wtime();
+		for(int i=0; i<nt; i++){
+			// build tree
+			build_tree( xmin, ymin, max_pts_per_node, max_level, width,
+						&pts, np, qt1, 0, np, 1);
+		}
+		end=omp_get_wtime();
+		cout<<"build_tree: "<<end-start<<endl;
+
+		start=omp_get_wtime();	
+		#pragma omp parallel for shared(qt1, pts) num_threads(n_th)
+		for(int i=0; i<np; i++)
+			evaluate_trees(i, 0, qt1, qt1, pts);
+		end=omp_get_wtime();
+		cout<<"evaluate_trees: "<<end-start<<endl;
+	
+		// ofstream ofs;
+		// write_boxes( qt1, ofs, 1 );
+		// write_points(pts, np);
+	
+		delete qt1;
+		
+		cout<<endl;
 	}
-	end=omp_get_wtime();
-	cout<<"build_tree: "<<end-start<<endl;
-
-	start=omp_get_wtime();	
-	#pragma omp parallel for shared(qt1, pts) num_threads(4)
-	for(int i=0; i<np; i++)
-		evaluate_trees(i, 0, qt1, qt1, pts);
-	end=omp_get_wtime();
-	cout<<"evaluate_trees: "<<end-start<<endl;
-	
-	ofstream ofs;
-	write_boxes( qt1, ofs, 1 );
-
-	write_points(pts, np);
-	
-	delete qt1;
-
 	
 	// n_th=2;
 	// qtree* qt2 = new qtree;
