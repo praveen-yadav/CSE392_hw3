@@ -290,7 +290,10 @@ int main( int argc, char** argv )
 
 	// number of poitns
 	int np = 2000;
+	int max_level = 10;
 	if(argc>1) np = pow(2,atoi(argv[1]));
+	if(argc>2) max_level = atoi(argv[2]);//2*log(np)/log(16);
+
 	// const int np = pow(2,22);//2000000;
 
 	// const int np = 2000;
@@ -300,7 +303,6 @@ int main( int argc, char** argv )
 	const double mrange = 10;
 	
 	// information necessary for qtree construction
-	const int max_level = 30;//2*log(np)/log(16);
 	const int max_pts_per_node = max(1.0,np/(pow(2,max_level)));
 
 	cout<<"max level: "<<max_level<<" "<<endl
@@ -322,7 +324,8 @@ int main( int argc, char** argv )
 	pts.resize(np);
 	#pragma omp parallel for shared(pts)
 	for(int i=0; i<np; i++){
-		if(i<np/10){
+
+	if(i<np/10){
 			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
 				mmin, mrange, xmin+xrange/4,
 				ymin+yrange/3, min(xrange,yrange)/5);
@@ -339,12 +342,12 @@ int main( int argc, char** argv )
 				min(xrange,yrange)/5);
 		}
 
-		// pts[i].gen_coords(xmin, xrange, ymin, yrange);
+	// pts[i].gen_coords(xmin, xrange, ymin, yrange, mmin, mrange);
 	}
 	
 	// compute morton ids
 	start=omp_get_wtime();	
-	#pragma omp parallel for default(none), shared(pts, np)
+	#pragma omp parallel for default(none), shared(pts, np, max_level)
 	for(int i=0; i<np; i++)
 		pts[i].get_morton_id(xmin, ymin, x_grid_size, y_grid_size, max_level);
 	end=omp_get_wtime();	
@@ -374,12 +377,12 @@ int main( int argc, char** argv )
 		end=omp_get_wtime();
 		cout<<"build_tree: "<<end-start<<endl;
 
-		start=omp_get_wtime();	
-		#pragma omp parallel for shared(qt1, pts) num_threads(n_th)
-		for(int i=0; i<np; i++)
-			evaluate_trees(i, qt1, pts);
-		end=omp_get_wtime();
-		cout<<"evaluate_trees: "<<end-start<<endl;
+		// start=omp_get_wtime();	
+		// #pragma omp parallel for shared(qt1, pts) num_threads(n_th)
+		// for(int i=0; i<np; i++)
+		// 	evaluate_trees(i, qt1, pts);
+		// end=omp_get_wtime();
+		// cout<<"evaluate_trees: "<<end-start<<endl;
 	
 		// ofstream ofs;
 		// write_boxes( qt1, ofs, 1 );

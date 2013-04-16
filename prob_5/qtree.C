@@ -63,12 +63,12 @@ int qtree::insert_points( int n_threads )
 	if (n_th > 1){
 		// now insert points to kids
 		// for(int i=0; i<4; i++){
-		#pragma omp parallel 
+		#pragma omp parallel shared (n_th)
 		{
 
-		#pragma omp sections nowait 
+		#pragma omp sections 
 		{
-			#pragma omp section
+			#pragma omp section 
 			{
 				#pragma omp atomic
 				n_th--;

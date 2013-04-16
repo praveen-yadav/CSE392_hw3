@@ -27,3 +27,6 @@ run2:
 
 clean:
 	@rm *.o
+
+euclid:
+	@scp *.C *.h Makefile  euclid:/home/ysakamoto/work/prob_5
