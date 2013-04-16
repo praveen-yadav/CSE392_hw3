@@ -288,7 +288,7 @@ int main( int argc, char** argv )
 	const double mrange = 10;
 	
 	// information necessary for qtree construction
-	const int max_level = 2*log(np)/log(16);
+	const int max_level = 100;//2*log(np)/log(16);
 	const int max_pts_per_node = max(1.0,np/(pow(2,max_level)));
 
 	cout<<"max level: "<<max_level<<" "<<endl
