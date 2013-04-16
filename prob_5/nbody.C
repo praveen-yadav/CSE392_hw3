@@ -8,7 +8,7 @@
 #include <cmath>
 #include <bitset>
 
-#include "../msort/msort.h"
+// #include "../msort/msort.h"
 #include "point.h"
 #include "particle.h"
 #include "qtree.h"
@@ -178,12 +178,14 @@ qtree* get_local_node(const int id, qtree* qt, const vector<particle>& pts )
 
 
 // check if the target and source are well-separated
-int well_separated( qtree* target, qtree* source )
+int well_separated( const double x_target,
+					const double y_target,
+					qtree* source )
 {
-	double xdiff = abs((source->anchor.x) - (target->anchor.x));
-	double ydiff = abs((source->anchor.y) - (target->anchor.y));
+	double xdiff = abs((source->anchor.x) - (x_target));
+	double ydiff = abs((source->anchor.y) - (y_target));
 
-	if ((xdiff>target->width.x) || (ydiff>target->width.y) )
+	if ((xdiff>source->width.x) || (ydiff>source->width.y) )
 		return 1;
 	
 	return 0;
@@ -217,12 +219,12 @@ double approximate_evaluation( const int id, qtree* source,
 }
 
 // evaluate the forces using quadtree
-void evaluate_trees( const int id, const int level,
-					 qtree* target, qtree* source, vector<particle>& pts)
+void evaluate_trees( const int id,
+					 qtree* source, vector<particle>& pts)
 {
 	// get qtree pointer of the kid that has the pts[id]
 	// target = get_local_node(id, target, 1);
-	target = get_local_node(id, target, pts);
+	// target = get_local_node(id, target, pts);
 
 	
 	// cout<<"x "<<pts[id].x<<" y "<<pts[id].y<<endl;
@@ -231,7 +233,7 @@ void evaluate_trees( const int id, const int level,
 	// now compare the target with the kids of the source
 	for(int i=0; i<4; i++){
 		// not separated enough
-		if(!well_separated(target, &(source->kids[i]))){
+		if(!well_separated(pts[id].x, pts[id].y, &(source->kids[i]))){
 			// but the kid is a leaf
 			if(source->kids[i].isleaf){
 				// cout<<target->gid<<" and "<<source->kids[i].gid
@@ -243,7 +245,7 @@ void evaluate_trees( const int id, const int level,
 			else{
 				// cout<<"not separated enough"<<endl;
 				// go one level down
-				evaluate_trees(id, level+1, target, &(source->kids[i]), pts);
+				evaluate_trees(id, &(source->kids[i]), pts);
 			}
 		}
 		else{
@@ -260,7 +262,7 @@ void evaluate_trees( const int id, const int level,
 
 
 // main function
-int main()
+int main( int argc, char** argv )
 {
 	// thread nesting enabled
 	omp_set_nested(1);
@@ -275,7 +277,10 @@ int main()
 	const double ymax = 1;
 
 	// number of poitns
-	const int np = 20000;
+	int np = 2000;
+	if(argc>1) np = pow(2,atoi(argv[1]));
+	// const int np = pow(2,22);//2000000;
+
 	// const int np = 2000;
 
 	// mass
@@ -303,14 +308,14 @@ int main()
 	// generate points
 	vector<particle> pts;
 	pts.resize(np);
-	#pragma omp parallel for default(none), shared(pts)
+	#pragma omp parallel for shared(pts)
 	for(int i=0; i<np; i++){
-		if(i<np/30){
+		if(i<np/10){
 			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
 				mmin, mrange, xmin+xrange/4,
 				ymin+yrange/3, min(xrange,yrange)/5);
 		}
-		else if(i<np/10) {
+		else if(i<4*np/10) {
 			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
 				mmin, mrange, xmin+3*xrange/4,
 				ymin+2*yrange/3, min(xrange,yrange)/6);
@@ -318,7 +323,7 @@ int main()
 		else{
 			pts[i].gen_coords_cluster(xmin, xrange, ymin, yrange,
 				mmin, mrange,
-				xmin+xrange/4, ymin+yrange/4,
+				xmin+xrange/4, ymin+3*yrange/4,
 				min(xrange,yrange)/5);
 		}
 
@@ -327,7 +332,7 @@ int main()
 	
 	// compute morton ids
 	start=omp_get_wtime();	
-	#pragma omp parallel for default(none), shared(pts)
+	#pragma omp parallel for default(none), shared(pts, np)
 	for(int i=0; i<np; i++)
 		pts[i].get_morton_id(xmin, ymin, x_grid_size, y_grid_size, max_level);
 	end=omp_get_wtime();	
@@ -360,7 +365,7 @@ int main()
 		start=omp_get_wtime();	
 		#pragma omp parallel for shared(qt1, pts) num_threads(n_th)
 		for(int i=0; i<np; i++)
-			evaluate_trees(i, 0, qt1, qt1, pts);
+			evaluate_trees(i, qt1, pts);
 		end=omp_get_wtime();
 		cout<<"evaluate_trees: "<<end-start<<endl;
 	
@@ -368,7 +373,7 @@ int main()
 		// write_boxes( qt1, ofs, 1 );
 		// write_points(pts, np);
 	
-		delete qt1;
+		// delete qt1;
 		
 		cout<<endl;
 	}
