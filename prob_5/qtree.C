@@ -63,7 +63,10 @@ int qtree::insert_points( int n_threads )
 	if (n_th > 1){
 		// now insert points to kids
 		// for(int i=0; i<4; i++){
-		#pragma omp parallel sections
+		#pragma omp parallel 
+		{
+
+		#pragma omp sections nowait 
 		{
 			#pragma omp section
 			{
@@ -112,7 +115,7 @@ int qtree::insert_points( int n_threads )
 
 		} 
 	}
-
+	}
 	// serial
 	else{
 		for(int i=0; i<4; i++){
@@ -173,13 +176,18 @@ void qtree::points_in_node(vector<int>& idx_parent)
 		
 	for(int i=0; i<npts; i++){
 		// int mt_id = (*pts)[real_idx].mt_id;
-		int mt_id = (*pts)[idx_parent[i]].mt_id;
-		int offset = max_level-level;
-	
+		#ifndef LONG_LONG
+		unsigned int mt_id = (*pts)[idx_parent[i]].mt_id;
+		#endif
+		#ifdef LONG_LONG
+		unsigned long long mt_id = (*pts)[idx_parent[i]].mt_id;
+		#endif
+		
+		int offset = max_level-level;		
+		
 		if(( (mt_id & mt_checker[offset]) >> (offset*2)  ) == lid){
 			idx.push_back(idx_parent[i]);
-			// cout<<real_idx<<" "<<(pts)[real_idx].x<<" "<<(pts)[real_idx].y
-				// <<" "<<(pts)[real_idx].mt_id<<" is in box "<<lid
+				// cout<<(*pts)[i].mt_id<<" is in box "<<lid
 				// <<" on level "<<level<<endl;
 		}
 	}

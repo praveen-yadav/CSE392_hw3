@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <bitset>
+#include <iomanip>
 
 // #include "../msort/msort.h"
 #include "point.h"
@@ -95,7 +96,7 @@ int write_points( const vector<particle>& pts,
 
 	for (int i=0; i<np; i++){
 
-		ofile<<pts[i].x<<" "<<pts[i].y<<" "<<pts[i].mt_id<<" "
+		ofile<<pts[i].x<<" "<<pts[i].y<<" "<<setprecision(25)<<pts[i].mt_id<<" "
 			 <<pts[i].m<<" "<<pts[i].u<<endl;
 	}
 	ofile.close();
@@ -271,7 +272,6 @@ void evaluate_trees( const int id,
 	return;
 }
 
-
 // main function
 int main( int argc, char** argv )
 {
@@ -300,7 +300,7 @@ int main( int argc, char** argv )
 	const double mrange = 10;
 	
 	// information necessary for qtree construction
-	const int max_level = 100;//2*log(np)/log(16);
+	const int max_level = 30;//2*log(np)/log(16);
 	const int max_pts_per_node = max(1.0,np/(pow(2,max_level)));
 
 	cout<<"max level: "<<max_level<<" "<<endl
@@ -385,7 +385,7 @@ int main( int argc, char** argv )
 		// write_boxes( qt1, ofs, 1 );
 		// write_points(pts, np);
 	
-		// delete qt1;
+		delete qt1;
 		
 		cout<<endl;
 	}
@@ -434,3 +434,12 @@ int main( int argc, char** argv )
 	return 0;
 }
 
+
+// int main()
+// {
+// 		for(int i=1; i<67; i+=2)
+// 			cout<<setprecision(25)<<pow(2,(i-1)) + pow(2,i)<<", ";
+// 		// for(int i=1; i<33; i++)
+// 			// cout<<setprecision(25)<<2*pow(4,(i-1))<<", ";
+
+// }

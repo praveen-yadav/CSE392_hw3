@@ -1,5 +1,6 @@
 #include "particle.h"
 #include <cmath>
+#include "bits_numbers.h"
 
 void particle::gen_coords( const double xmin, const double xrange, 
 						   const double ymin, const double yrange,
@@ -48,12 +49,19 @@ void particle::get_morton_id( const double xmin,
 							  const double y_grid_size,
 							  const int max_level )
 {
+	#ifndef LONG_LONG
 	unsigned int xc_mid = 0;
 	unsigned int yc_mid = 0;
-
-	const int xc = (x-xmin)/x_grid_size;
-	const int yc = (y-ymin)/y_grid_size;
-
+	const unsigned int xc = (x-xmin)/x_grid_size;
+	const unsigned int yc = (y-ymin)/y_grid_size;
+	#endif
+	#ifdef LONG_LONG
+	unsigned long long xc_mid = 0;
+	unsigned long long yc_mid = 0;
+	const unsigned long long  xc = (x-xmin)/x_grid_size;
+	const unsigned long long  yc = (y-ymin)/y_grid_size;
+	#endif
+	
 	for(int i=0; i<max_level; i++){
 		xc_mid = xc_mid | (xc<<i) & bits_x[i];
 		yc_mid = yc_mid | (yc<<i+1) & bits_y[i];

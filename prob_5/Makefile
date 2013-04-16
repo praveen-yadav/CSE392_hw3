@@ -7,10 +7,10 @@ nbody: nbody.o particle.o qtree.o point.o
 nbody.o: nbody.C qtree.h point.h particle.h
 	g++ -c nbody.C -fopenmp 
 
-particle.o: particle.C particle.h
+particle.o: particle.C particle.h bits_numbers.h
 	g++ -c particle.C -fopenmp 
 
-qtree.o: qtree.C qtree.h
+qtree.o: qtree.C qtree.h bits_numbers.h
 	g++ -c qtree.C -fopenmp 
 
 point.o: point.C point.h

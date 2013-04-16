@@ -8,21 +8,12 @@
 #include <omp.h>
 #include "point.h"
 #include "particle.h"
+#include "bits_numbers.h"
 
 using namespace std;
 
-// to check morton ids
-const int mt_checker[13] =
-	{ 3, 12, 48, 192, 768, 3072, 12288, 49152, 196608, 786432, 3145728,
-	  12582912, 50331648};
+#define LONG_LONG
 
-const int kids_pos[4][2] =
-    {
-        {0,0},
-        {1,0},
-		{0,1},
-		{1,1}
-    };
 
 // keep track of number of threads at work
 extern int n_th;
