@@ -46,6 +46,7 @@ void qtree::initialize ( qtree* ini_parent, int ini_level, point ini_anchor,
 }
 
 int n_th;
+int* threads_pointer;
 
 int qtree::insert_points( int n_threads )
 {
@@ -62,15 +63,19 @@ int qtree::insert_points( int n_threads )
 
 	}
 
-	if (n_threads > 1){
+	if (n_th > 1){
 		// now insert points to kids
 		// for(int i=0; i<4; i++){
 		#pragma omp parallel sections
 		{
 			#pragma omp section
 			{
-				// cout<<omp_get_thread_num()<<" start"<<endl;
+				#pragma omp atomic
+				n_th--;
+				#pragma omp critical
+				cout<<omp_get_thread_num()<<" start"<<endl;
 				kids[0].points_in_node(idx);
+				
 				if(kids[0].insert_points(n_threads/2))
 					kids_exist[0] = 0;
 				
@@ -79,14 +84,20 @@ int qtree::insert_points( int n_threads )
 					kids_exist[1] = 0;
 				// #pragma omp critical
 				// {
-				// 	cout<<omp_get_thread_num()<<" "
+				#pragma omp critical
+				cout<<omp_get_thread_num()<<" end"<<endl;
 				// 	<<kids[0].idx.size()+kids[1].idx.size()<<" end"<<endl;
 				// }
+				#pragma omp atomic
+				n_th++;
 			}
 
 			#pragma omp section
 			{
-				// cout<<omp_get_thread_num()<<" start"<<endl;
+				#pragma omp atomic
+				n_th--;
+				#pragma omp critical
+				cout<<omp_get_thread_num()<<" start"<<endl;
 				kids[2].points_in_node(idx);
 				if(kids[2].insert_points(n_threads-n_threads/2))
 					kids_exist[2] = 0;
@@ -95,9 +106,12 @@ int qtree::insert_points( int n_threads )
 				if(kids[3].insert_points(n_threads-n_threads/2))
 					kids_exist[3] = 0;
 
+				#pragma omp atomic
+				n_th++;
 				// 	#pragma omp critical
 				// {
-				// 	cout<<omp_get_thread_num()<<" "
+				#pragma omp critical
+				cout<<omp_get_thread_num()<<" end"<<endl;
 				// 	<<kids[2].idx.size()+kids[3].idx.size()<<" end"<<endl;
 				// }
 				
@@ -215,17 +229,9 @@ void qtree::show_tree()
 // destructor, delete all the child objects
 qtree::~qtree()
 {
-	for(int i=0; i<4; i++){
-		// not leaf
-		if(!kids[i].isleaf){
-			kids[i].~qtree();
-		}
-		// leaf
-		else{
-			for(int j=0; j<kids[i].idx.size(); j++)
-				delete[] kids[i].kids;
-		}
-	}
+	// not leaf
+	if(!isleaf)
+		delete[] kids;
 
 	return;
 }

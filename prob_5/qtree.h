@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <cstdlib>
+#include <omp.h>
 #include "point.h"
 #include "particle.h"
 

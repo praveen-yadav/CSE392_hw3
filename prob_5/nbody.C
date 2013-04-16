@@ -16,6 +16,9 @@
 
 using namespace std;
 
+extern int n_th;
+extern int* threads_pointer;
+
 int compar_vector( const particle left, const particle right)
 {
 	return left.mt_id<right.mt_id;
@@ -122,8 +125,8 @@ int main()
 	const double ymax = 1;
 
 	// number of poitns
-	// const int np = 2000000;
-	const int np = 2000;
+	const int np = 2000000;
+	// const int np = 2000;
 
 	// mass
 	const double mmin = 1.0;
@@ -178,7 +181,10 @@ int main()
 
 	// read points data
 	// read_points(pts, np);
-	
+
+	n_th=1;
+	threads_pointer = new int*;
+	threads_pointer[0] = 1;
 	qtree* qt1 = new qtree;
 	// parallel tree construction
 	double start=omp_get_wtime();
@@ -191,6 +197,7 @@ int main()
 	double end=omp_get_wtime();
 	cout<<"wall clock time = "<<end-start<<endl;
 
+	n_th=2;
 	qtree* qt2 = new qtree;
 	// parallel tree construction
 	start=omp_get_wtime();
@@ -203,7 +210,7 @@ int main()
 	end=omp_get_wtime();
 	cout<<"wall clock time = "<<end-start<<endl;
 
-	
+	n_th=4;
 	qtree* qt4 = new qtree;
 	// parallel tree construction
 	start=omp_get_wtime();
@@ -216,6 +223,7 @@ int main()
 	end=omp_get_wtime();
 	cout<<"wall clock time = "<<end-start<<endl;
 
+	n_th=8;
 	qtree* qt8 = new qtree;
 	// parallel tree construction
 	start=omp_get_wtime();
@@ -229,9 +237,9 @@ int main()
 	cout<<"wall clock time = "<<end-start<<endl;
 
 
-	evaluate_trees();
+	// evaluate_trees();
 	
-	write_points(pts, np);
+	// write_points(pts, np);
 
 	delete qt1, qt2, qt4, qt8;
 
