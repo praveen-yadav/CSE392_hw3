@@ -9,13 +9,6 @@
 
 using namespace std;
 
-// Algorithm 36.1
-// 1. Create a set S of candidates for I as follows. For each vertex v in
-// parallel, include v \in S with probability 1/2d(v)
-// 2. For each edge in E , if both its endpoints are in S , discard the one of
-// lower degree; ties are resolved arbitrary (say by vertex number).
-// The resulting set is I.
-
 // comparison function for sorting pairs
 bool comp_pairs( const pair<int, int>& i, const pair<int, int>& j ) {
     if( i.first < j.first ) return true;
