@@ -291,7 +291,7 @@ int main( int argc, char** argv )
 	// number of poitns
 	int np = 2000;
 	int max_level = 10;
-	if(argc>1) np = pow(2,atoi(argv[1]));
+	if(argc>1) np = (int)pow(2,(double)atoi(argv[1]));
 	if(argc>2) max_level = atoi(argv[2]);//2*log(np)/log(16);
 
 	// const int np = pow(2,22);//2000000;
@@ -303,7 +303,7 @@ int main( int argc, char** argv )
 	const double mrange = 10;
 	
 	// information necessary for qtree construction
-	const int max_pts_per_node = max(1.0,np/(pow(2,max_level)));
+	const int max_pts_per_node = (int)max(1.0,np/(pow(2,(double)max_level)));
 
 	cout<<"max level: "<<max_level<<" "<<endl
 		<<"max pts per node: "<<max_pts_per_node<<endl;
@@ -362,7 +362,7 @@ int main( int argc, char** argv )
 	// read_points(pts, np);
 
 	cout<<endl;
-	for(int i=0; i<4; i++){
+	for(int i=0; i<5; i++){
 		n_th=pow(2.0,i);
 		cout<<"proc: "<<n_th<<endl;
 			
@@ -377,12 +377,12 @@ int main( int argc, char** argv )
 		end=omp_get_wtime();
 		cout<<"build_tree: "<<end-start<<endl;
 
-		// start=omp_get_wtime();	
-		// #pragma omp parallel for shared(qt1, pts) num_threads(n_th)
-		// for(int i=0; i<np; i++)
-		// 	evaluate_trees(i, qt1, pts);
-		// end=omp_get_wtime();
-		// cout<<"evaluate_trees: "<<end-start<<endl;
+		start=omp_get_wtime();	
+		#pragma omp parallel for shared(qt1, pts) num_threads(n_th)
+		for(int i=0; i<np; i++)
+			evaluate_trees(i, qt1, pts);
+		end=omp_get_wtime();
+		cout<<"evaluate_trees: "<<end-start<<endl;
 	
 		// ofstream ofs;
 		// write_boxes( qt1, ofs, 1 );

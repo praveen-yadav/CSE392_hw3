@@ -30,3 +30,6 @@ clean:
 
 euclid:
 	@scp *.C *.h Makefile  euclid:/home/ysakamoto/work/prob_5
+
+stampede:
+	@scp *.C *.h Makefile  stampede:/work/02233/sakamoto/CSE392/hw3/prob_5_th
